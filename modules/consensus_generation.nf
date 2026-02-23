@@ -5,7 +5,7 @@
 
 process readFilter {
     conda "${HOME}/miniconda3/envs/WaSPPipe"
-    publishDir "results/${sample_ID}/trimmed_reads_1", pattern: "*filtered.fastq.gz"
+    publishDir "results/${sample_ID}/filtered_reads_1", pattern: "*filtered.fastq.gz"
 
     input:
     tuple val(sample_ID), path(sample_ID_files)
@@ -16,7 +16,29 @@ process readFilter {
     tuple val(sample_ID), path("*filtered.fastq.gz")
 
     script:
+    // Vaguely concerned that this is a hacky way to get chopper to take in multiple files, need to think on this.
     """
-    chopper --minlength ${min_length} --maxlength ${max_length} --input ${sample_ID_files} > ${sample_ID}_filtered.fastq.gz
+    zcat ${sample_ID_files} | chopper --minlength ${min_length} --maxlength ${max_length} > ${sample_ID}_filtered.fastq.gz
     """
+}
+
+process primerTrimming {
+    // At this stage the plan is to just hard trim from the ends of each read.
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "results/${sample_ID}/primer_trimming_2", pattern: "*trimmed.fastq.gz"
+
+    input:
+    tuple val(sample_ID), path(filtered_reads)
+    val trim_length
+
+    output:
+    tuple val(sample_ID), path("*trimmed.fastq.gz")
+
+    script:
+    """
+    zcat ${sample_ID_files} | chopper --trim-approach fixed-crop --headcrop trim_length --tailcrop trim_length
+}
+
+process readMapper {
+
 }
