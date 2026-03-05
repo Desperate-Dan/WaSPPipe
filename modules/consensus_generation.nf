@@ -55,17 +55,25 @@ process readMapper {
 
     output:
     tuple val(sample_ID), path("*.sorted.bam"), emit: mapped_reads
-    path "*.bai", emit: bam_index
+    path "*.bai", emit: bam_index, optional: true
     path "*.fai", emit: ref_index
     path "*"
 
     script:
+    // The samtools view section removes any unmapped reads from the output bam file
+    // The reference indexing may not be necessary unless there is a new reference specified, could ust host the index file like the reference file itself
     """
-    minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools sort -o ${sample_ID}.sorted.bam -
+    minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
     samtools index ${sample_ID}.sorted.bam
     samtools faidx ${input_references}
     """
 }
+
+// Is it better to separate out each of the references that have reads mapped against them before we move on to the variant calling steps? Possibly...
+// Clair3 is happy to call variants on the bam file resulting from mapping against all the viral sequences. 
+// Is that more computationally efficient than run samples x N consensus instances or variant calling?
+// This may include calling variants on samples below whatever our read depth threshold will be.
+// Need to consider if two references are quite close together we might need to re map after an initial mapping to see if we mop anything else up.
 
 process variantCalling {
     // Going to try Clair3 for this...
@@ -74,7 +82,7 @@ process variantCalling {
     container "hkubal/clair3:v1.2.0"
     publishDir "${params.out_dir}/${sample_ID}/variant_calling_4"
 
-    debug true
+    debug false
 
     // Need to provide the bam index and reference index; may want to add another step here to deal with that.
     input:
@@ -93,4 +101,9 @@ process variantCalling {
     echo ${PWD}
     /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${MODEL_NAME}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
     """
+}
+
+process maskGen {
+    // Run maskara to get depth masks for the mapped reads.
+    
 }
