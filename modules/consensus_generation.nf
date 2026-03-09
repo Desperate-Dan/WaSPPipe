@@ -4,7 +4,7 @@
 // I'm splitting read length filtering and then primer trimming in case other processes need to be added in between
 
 process readFilter {
-    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
     publishDir "${params.out_dir}/${sample_ID}/filtered_reads_1"
 
     input:
@@ -25,7 +25,7 @@ process readFilter {
 
 process primerTrimming {
     // At this stage the plan is to just hard trim from the ends of each read.
-    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
     publishDir "${params.out_dir}/${sample_ID}/primer_trimming_2"
 
     input:
@@ -44,7 +44,7 @@ process primerTrimming {
 
 process readMapper {
     // Classic minimap2 of reads to start with, more elaborate approaches may be needed down the line.
-    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
     publishDir "${params.out_dir}/${sample_ID}/read_mapping_3"
 
     debug true
@@ -98,12 +98,26 @@ process variantCalling {
     script:
     MODEL_NAME = "r1041_e82_400bps_hac_v410"
     """
-    echo ${PWD}
     /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${MODEL_NAME}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
     """
 }
 
 process maskGen {
     // Run maskara to get depth masks for the mapped reads.
-    
+    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
+    publishDir "${params.out_dir}/${sample_ID}/mask_generation_5"
+
+    input:
+    tuple val(sample_ID), path(mapped_reads)
+    path bam_index
+
+    output:
+    path "*mask.tsv"
+
+    script:
+    """
+    which python
+    which python3
+    maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads}
+    """
 }

@@ -1,0 +1,12 @@
+name: WaSPPipe_mk2
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12 # This is due to pysam not installing with python 3.14 as of 20260909
+  - chopper
+  - pigz
+  - samtools
+  - minimap2
+  - pip
