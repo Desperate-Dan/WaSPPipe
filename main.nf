@@ -1,7 +1,7 @@
 #!/usr/bin/env nextflow
 
 // Get the modules we need
-include { readFilter; primerTrimming; readMapper; variantCalling; maskGen } from './modules/consensus_generation.nf'
+include { readFilter; primerTrimming; readMapper; variantCalling; maskGen; makeConsensus } from './modules/consensus_generation.nf'
 
 //These lines for fastq dir parsing are taken from rmcolq's workflow https://github.com/rmcolq/pantheon
 EXTENSIONS = ["fastq", "fastq.gz", "fq", "fq.gz"]
@@ -25,6 +25,8 @@ workflow consensus_wf {
     readMapper(primerTrimming.out.trimmed_reads, inRefs_ch)
     variantCalling(readMapper.out.mapped_reads, inRefs_ch, readMapper.out.bam_index, readMapper.out.ref_index)
     maskGen(readMapper.out.mapped_reads, readMapper.out.bam_index)
+    makeConsensus(variantCalling.out.variant_file, variantCalling.out.variant_index, maskGen.out.mask_file, inRefs_ch)
+
 }
 
 workflow {

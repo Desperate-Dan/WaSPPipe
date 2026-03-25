@@ -1,7 +1,7 @@
 // Processes for read QC and consensus generation will be contained here.
 
 // reads should be adaptor and barcode trimmed by the time they see this pipeline, will add those bits in if needed.
-// I'm splitting read length filtering and then primer trimming in case other processes need to be added in between
+// I'm splitting read length filtering and then primer trimming in case other processes need to be added in between.
 
 process readFilter {
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
@@ -19,6 +19,7 @@ process readFilter {
     script:
     // Vaguely concerned that this is a hacky way to get chopper to take in multiple files, need to think on this.
     """
+    conda info
     zcat ${sample_ID_files} | chopper --minlength ${min_length} --maxlength ${max_length} | pigz > ${sample_ID}_filtered.fastq.gz
     """
 }
@@ -60,8 +61,8 @@ process readMapper {
     path "*"
 
     script:
-    // The samtools view section removes any unmapped reads from the output bam file
-    // The reference indexing may not be necessary unless there is a new reference specified, could ust host the index file like the reference file itself
+    // The samtools view section removes any unmapped reads from the output bam file for space efficiency.
+    // The reference indexing may not be necessary unless there is a new reference specified, could just host the index file like the reference file itself.
     """
     minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
     samtools index ${sample_ID}.sorted.bam
@@ -92,7 +93,8 @@ process variantCalling {
     path ref_index
 
     output:
-    path "*.vcf", emit: variant_file, optional: true
+    tuple val(sample_ID), path("merge_output.vcf.gz"), emit: variant_file, optional: true
+    path "merge_output.vcf.gz.tbi", emit: variant_index, optional: true
     path "*", optional: true
 
     script:
@@ -112,12 +114,35 @@ process maskGen {
     path bam_index
 
     output:
-    path "*mask.tsv"
+    path "combined_mask.tsv", emit: mask_file
 
     script:
     """
-    which python
-    which python3
     maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads}
+    cat *_mask.tsv > combined_mask.tsv
+    """
+}
+
+
+process makeConsensus {
+    // Apply the mask and variants to their appropriate consensus files.
+    // Currently we have one variant file, but X number of mask files. Maybe should create a single large mask file. 
+    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
+    publishDir "${params.out_dir}/${sample_ID}/consensus_generation_6"
+
+    input:
+    tuple val(sample_ID), path(variant_file)
+    path variant_index
+    path mask_file
+    path input_references
+
+    output:
+    path "masked_consensus_sequences.fasta"
+
+    script:
+    // May need to add some variant parsing here or in a separate step.
+    """
+    bcftools consensus -f ${input_references} -m ${mask_file} -o output.fasta merge_output.vcf.gz ${variant_file}
+    python3 ${projectDir}/resources/scripts/fasta_xtractor.py output.fasta ${mask_file} masked_consensus_sequences.fasta
     """
 }
