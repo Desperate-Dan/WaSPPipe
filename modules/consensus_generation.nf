@@ -76,12 +76,15 @@ process readMapper {
 // This may include calling variants on samples below whatever our read depth threshold will be.
 // Need to consider if two references are quite close together we might need to re map after an initial mapping to see if we mop anything else up.
 
+// Currently this script calls variants on every sample, clearly an unecessary use of resources... Could do the mask gen step beforehand to check the 
+// read depth criteria has been met before variant calling.
+
 process variantCalling {
     // Going to try Clair3 for this...
     // This is the latest docker container for Clair3 as of 20260304
     // NB turns out v2.0.0 is actually bugged in some capacity where it won't find the fasta.fai no matter what I do. Using previous v1.2.0.
     container "hkubal/clair3:v1.2.0"
-    publishDir "${params.out_dir}/${sample_ID}/variant_calling_4"
+    publishDir "${params.out_dir}/${sample_ID}/variant_calling_5"
 
     debug false
 
@@ -91,6 +94,7 @@ process variantCalling {
     path input_references
     path bam_index
     path ref_index
+    tuple val(sample_ID), path (mask_file) // adding the mask file just to ensure we only call variants on samples we can make a ref from.
 
     output:
     tuple val(sample_ID), path("merge_output.vcf.gz"), emit: variant_file, optional: true
@@ -107,42 +111,46 @@ process variantCalling {
 process maskGen {
     // Run maskara to get depth masks for the mapped reads.
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
-    publishDir "${params.out_dir}/${sample_ID}/mask_generation_5"
+    publishDir "${params.out_dir}/${sample_ID}/mask_generation_4"
 
     input:
     tuple val(sample_ID), path(mapped_reads)
     path bam_index
 
     output:
-    path "combined_mask.tsv", emit: mask_file
+    tuple val(sample_ID), path("combined_masks.tsv"), emit: mask_file, optional: true
+
+    tuple val(sample_ID), path("*_mask.tsv"), emit: hits, optional: true
+    tuple val(sample_ID), path("NO_REF*"), emit: misses, optional: true
 
     script:
+    // The use of compgen bothers me a bit (can't use [] as it doesn't support glob), but as long as it's run on BASH it should be okay.
     """
     maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads}
-    cat *_mask.tsv > combined_mask.tsv
+    if compgen -G *_mask.tsv; then cat *_mask.tsv > combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
     """
 }
 
 
 process makeConsensus {
-    // Apply the mask and variants to their appropriate consensus files.
-    // Currently we have one variant file, but X number of mask files. Maybe should create a single large mask file. 
+    // Apply the mask and variants to their appropriate consensus files. 
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
     publishDir "${params.out_dir}/${sample_ID}/consensus_generation_6"
 
     input:
     tuple val(sample_ID), path(variant_file)
     path variant_index
-    path mask_file
+    tuple val(sample_ID), path (mask_file)
     path input_references
 
     output:
-    path "masked_consensus_sequences.fasta"
+    path "${sample_ID}*.fasta"
 
     script:
     // May need to add some variant parsing here or in a separate step.
     """
-    bcftools consensus -f ${input_references} -m ${mask_file} -o output.fasta merge_output.vcf.gz ${variant_file}
-    python3 ${projectDir}/resources/scripts/fasta_xtractor.py output.fasta ${mask_file} masked_consensus_sequences.fasta
+    bcftools consensus -f ${input_references} -m ${mask_file} -o temp.fasta merge_output.vcf.gz ${variant_file}
+    python3 ${projectDir}/resources/scripts/fasta_xtractor.py temp.fasta ${mask_file} ${sample_ID}
+    if compgen -G ${sample_ID}*.fasta; then cat ${sample_ID}*.fasta > ${sample_ID}_combined.fasta; fi
     """
 }

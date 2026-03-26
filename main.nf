@@ -23,10 +23,15 @@ workflow consensus_wf {
     readFilter(inBarcode_ch, inMaxLen_ch, inMinLen_ch)
     primerTrimming(readFilter.out.len_filt_reads, inTrimLen_ch)
     readMapper(primerTrimming.out.trimmed_reads, inRefs_ch)
-    variantCalling(readMapper.out.mapped_reads, inRefs_ch, readMapper.out.bam_index, readMapper.out.ref_index)
     maskGen(readMapper.out.mapped_reads, readMapper.out.bam_index)
-    makeConsensus(variantCalling.out.variant_file, variantCalling.out.variant_index, maskGen.out.mask_file, inRefs_ch)
 
+    hits_ch = maskGen.out.hits.collect(flat: false) {item -> [item[0], item[1].collect {it -> it.toString().split("/")[-1]}]}
+    misses_ch = maskGen.out.misses.collect(flat: false) {item -> [item[0], item[1].toString().split("/")[-1]]}
+    hitsAndMisses_ch = hits_ch.flatMap().concat(misses_ch.flatMap())
+    hitsAndMisses_ch.collectFile(name: "Ref_matches_report.csv", newLine: true, storeDir: "${launchDir}/output", sort: true) {it -> it.toString().replace("_mask.tsv","").replace("[","").replace("]","").replace(" ","")}
+
+    variantCalling(readMapper.out.mapped_reads, inRefs_ch, readMapper.out.bam_index, readMapper.out.ref_index, maskGen.out.mask_file)
+    makeConsensus(variantCalling.out.variant_file, variantCalling.out.variant_index, maskGen.out.mask_file, inRefs_ch)
 }
 
 workflow {
