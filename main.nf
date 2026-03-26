@@ -25,7 +25,7 @@ workflow consensus_wf {
     readMapper(primerTrimming.out.trimmed_reads, inRefs_ch)
     maskGen(readMapper.out.mapped_reads, readMapper.out.bam_index)
 
-    hits_ch = maskGen.out.hits.collect(flat: false) {item -> [item[0], item[1].collect {it -> it.toString().split("/")[-1]}]}
+    hits_ch = maskGen.out.hits.collect(flat: false) {item -> [item[0], item[1] instanceof ArrayList ? item[1].collect {it -> it.toString().split("/")[-1]} : item[1].toString().split("/")[-1]]}
     misses_ch = maskGen.out.misses.collect(flat: false) {item -> [item[0], item[1].toString().split("/")[-1]]}
     hitsAndMisses_ch = hits_ch.flatMap().concat(misses_ch.flatMap())
     hitsAndMisses_ch.collectFile(name: "Ref_matches_report.csv", newLine: true, storeDir: "${launchDir}/output", sort: true) {it -> it.toString().replace("_mask.tsv","").replace("[","").replace("]","").replace(" ","")}
