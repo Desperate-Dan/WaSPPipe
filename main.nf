@@ -2,12 +2,18 @@
 
 // Get the modules we need
 include { readFilter; primerTrimming; readMapper; variantCalling; maskGen; makeConsensus } from './modules/consensus_generation.nf'
+include { aphorismGenerator } from './modules/misc_processes.nf'
 
 //These lines for fastq dir parsing are taken from rmcolq's workflow https://github.com/rmcolq/pantheon
 EXTENSIONS = ["fastq", "fastq.gz", "fq", "fq.gz"]
 
 ArrayList get_fq_files_in_dir(Path dir) {
     return EXTENSIONS.collect { file(dir.resolve("*.$it"), type: "file") } .flatten()
+}
+
+workflow aphorism_wf {
+    aphoFile_ch = Channel.fromPath("${params.aphorisms}")
+    aphorismGenerator(aphoFile_ch)
 }
 
 workflow consensus_wf {
@@ -35,5 +41,6 @@ workflow consensus_wf {
 }
 
 workflow {
+    aphorism_wf()
     consensus_wf()
 }
