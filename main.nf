@@ -3,6 +3,7 @@
 // Get the modules we need
 include { readFilter; primerTrimming; readMapper; variantCalling; maskGen; makeConsensus } from './modules/consensus_generation.nf'
 include { aphorismGenerator } from './modules/misc_processes.nf'
+include { kraken2Run; kronaRun; kronaMulti } from './modules/kraken_analysis.nf'
 
 //These lines for fastq dir parsing are taken from rmcolq's workflow https://github.com/rmcolq/pantheon
 EXTENSIONS = ["fastq", "fastq.gz", "fq", "fq.gz"]
@@ -14,6 +15,15 @@ ArrayList get_fq_files_in_dir(Path dir) {
 workflow aphorism_wf {
     aphoFile_ch = Channel.fromPath("${params.aphorisms}")
     aphorismGenerator(aphoFile_ch)
+}
+
+workflow kraken_wf {
+    // Should condense this into happening in the main workflow bit below.
+    runDir = file("${params.fastq}", type: "dir", checkIfExists:true)
+    inBarcode_ch = Channel.fromPath("${runDir}/*", type: "dir", checkIfExists:true, maxDepth:1).map { [it.baseName, get_fq_files_in_dir(it)]}
+    kraken2Run(inBarcode_ch)
+    kronaRun(kraken2Run.out.report)
+    kronaMulti(kraken2Run.out.reports.collect())
 }
 
 workflow consensus_wf {
@@ -41,6 +51,10 @@ workflow consensus_wf {
 }
 
 workflow {
-    aphorism_wf()
+    if (params.aphorisms) {
+        aphorism_wf()
+    }
+    kraken_wf()
     consensus_wf()
+    
 }

@@ -19,7 +19,6 @@ process readFilter {
     script:
     // Vaguely concerned that this is a hacky way to get chopper to take in multiple files, need to think on this.
     """
-    conda info
     zcat ${sample_ID_files} | chopper --minlength ${min_length} --maxlength ${max_length} | pigz > ${sample_ID}_filtered.fastq.gz
     """
 }
