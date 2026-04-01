@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://raw.githubusercontent.com/Desperate-Dan/WaSSPipe/main/nextflow_schema.json",
+  "title": "Desperate-Dan/WaSSPipe",
+  "description": "Consensus generation and analysis pipeline for the WaSPP project (WIP).",
+  "url": "https://github.com/Desperate-Dan/WaSSPipe",
+  "type": "object",
+  "definitions": {
+    "input_options": {
+      "title": "Input Options",
+      "type": "object",
+      "fa_icon": "fas fa-terminal",
+      "description": "Define where the pipeline should find input data and change some frequently used options.",
+      "properties": {
+        "fastq": {
+          "type": "string",
+          "format": "path",
+          "title": "FASTQ",
+          "description": "Provide the path to the fastq_pass directory for your run.",
+          "help_text": "This should be the the path the the fastq_pass folder, which should contain a folder for each barcode in your run. This expects your data to be demultiplexed already, you will need to do that through Minknow if it is not already demultiplexed."
+        },
+        "ref": {
+          "type": "string",
+          "format": "path",
+          "title": "Reference file",
+          "default": "${projectDir}/resources/reference_fastas/virus_family_references.fasta",
+          "description": "The reference file your samples will be mapped against for reference based assembly (default: WaSPP curated viral family references).",
+          "help_text": "Change this to a custom reference file to map your samples against. The default contains all NCBI reference sequences for the members of the viral families of interest to the WaSPP project."
+        },
+        "depth": {
+          "type": "integer",
+          "title": "Read depth",
+          "default": 20,
+          "description": "Positions below this depth will be masked in the resulting consensus sequences (default: 20).",
+          "help_text": "When generating a consensus sequence, if there are less than this number of reads at that position it will be replaced with an N. The base quality (see below) is considered when counting the read depth at a position."
+        },
+        "baseQ": {
+          "type": "integer",
+          "title": "Base Quality",
+          "description": "Change the minimum base quality threshold (default: 20).",
+          "help_text": "If a base quality score is below this value it won't be considered as part of the count for read depth."
+        },
+        "read_count": {
+          "type": "integer",
+          "title": "Read Count",
+          "default": 50,
+          "description": "The minimum number of reads mapping to a reference to be considered for consensus generation (default: 50).",
+          "help_text": "After mapping to your reference(s) of choice, if a given reference has at least this number of reads mapped to it WaSSPipe will try to generate a consensus sequence for it. The mapping quality of these reads (see below) is considered when read counting."
+        },
+        "mappingQ": {
+          "type": "integer",
+          "title": "Mapping Quality",
+          "description": "Change the minimum read mapping quality threshold (default: 15).",
+          "help_text": "If the read mapping quality is below this threshold it won't be considered as part of the count for minimum read count."
+        },
+        "max_len": {
+            "type": "integer",
+            "title": "Maximum read length",
+            "default": 1500,
+            "description": "Reads above this length will be filtered before read mapping (deafult: 1500bp).",
+            "help_text": "Standard WaSPP primers shouldn't generate a fragment longer than 1500bp."
+        },
+        "min_len": {
+            "type": "integer",
+            "title": "Minimum read length",
+            "default": 100,
+            "description": "Reads below this length will be filtered before read mapping (default: 100bp)."
+        },
+        "trim_len": {
+            "type": "integer",
+            "title": "Trim length",
+            "default": 30,
+            "description": "Number of bases to trim from the ends of the reads to remove primers (default: 30bp).",
+            "help_text": "Currently WaSPP primers are not longer than 30bp, so trimming this length should remove primer sequences from downstream analysis."
+        }
+      },
+      "allOf": [
+        {
+          "required": [
+            "fastq"
+          ]
+        }
+      ]
+    },
+    "Kraken_options": {
+      "title": "Kraken2 Options",
+      "type": "object",
+      "fa_icon": "fas fa-file-import",
+      "description": "Change Kraken2 options",
+      "properties": {
+        "database": {
+          "type": "string",
+          "format": "path",
+          "title": "Kraken2 Database",
+          "description": "Change the database to use for Kraken2 read assignment (deafult: Viral).",
+          "help_text": "...",
+          "default": "Viral",
+          "enum": ["Viral","Other_ones"]
+        }
+      }
+    },
+    "miscellaneous_options": {
+      "title": "Miscellaneous Options",
+      "type": "object",
+      "fa_icon": "fas fa-file-import",
+      "description": "Everything else.",
+      "help_text": "These options are common to all nf-core pipelines and allow you to customise some of the core preferences for how the pipeline runs.\n\nTypically these options would be set in a Nextflow config file loaded for all pipeline runs, such as `~/.nextflow/config`.",
+      "properties": {
+        "help": {
+          "type": "boolean",
+          "title": "Display help text",
+          "fa_icon": "fas fa-question-circle",
+          "hidden": true
+        },
+        "version": {
+          "type": "boolean",
+          "title": "Display version",
+          "description": "Display version and exit.",
+          "fa_icon": "fas fa-question-circle",
+          "hidden": true
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/definitions/input_options"
+    },
+    {
+      "$ref": "#/definitions/pipeline_options"
+    },
+    {
+      "$ref": "#/definitions/seq_qc"
+    },
+    {
+      "$ref": "#/definitions/aln_qc"
+    },
+    {
+      "$ref": "#/definitions/tree_qc"
+    },
+    {
+      "$ref": "#/definitions/output_options"
+    },
+    {
+      "$ref": "#/definitions/miscellaneous_options"
+    }
+  ],
+  "properties": {
+    "aws_image_prefix": {
+      "type": "string",
+      "title": "AWS image prefix",
+      "hidden": true
+    },
+    "aws_queue": {
+      "type": "string",
+      "title": "AWS queue",
+      "hidden": true
+    },
+    "monochrome_logs": {
+      "type": "boolean"
+    },
+    "validate_params": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_hidden": {
+      "type": "boolean"
+    }
+  },
+  "docs": {
+    "intro": "\nWaSSPipe\n\n",
+    "links": "## Useful links\n\n* [nextflow](https://www.nextflow.io/)\n* [docker](https://www.docker.com/products/docker-desktop)"
+  }
+}

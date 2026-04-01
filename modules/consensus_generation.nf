@@ -75,8 +75,28 @@ process readMapper {
 // This may include calling variants on samples below whatever our read depth threshold will be.
 // Need to consider if two references are quite close together we might need to re map after an initial mapping to see if we mop anything else up.
 
-// Currently this script calls variants on every sample, clearly an unecessary use of resources... Could do the mask gen step beforehand to check the 
-// read depth criteria has been met before variant calling.
+process maskGen {
+    // Run maskara to get depth masks for the mapped reads.
+    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
+    publishDir "${params.out_dir}/${sample_ID}/mask_generation_4"
+
+    input:
+    tuple val(sample_ID), path(mapped_reads)
+    path bam_index
+
+    output:
+    tuple val(sample_ID), path("combined_masks.tsv"), emit: mask_file, optional: true
+
+    tuple val(sample_ID), path("*_mask.tsv"), emit: hits, optional: true
+    tuple val(sample_ID), path("NO_REF*"), emit: misses, optional: true
+
+    script:
+    // The use of compgen bothers me a bit (can't use [] as it doesn't support glob), but as long as it's run on BASH it should be okay.
+    """
+    maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads}
+    if compgen -G *_mask.tsv; then cat *_mask.tsv > combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
+    """
+}
 
 process variantCalling {
     // Going to try Clair3 for this...
@@ -106,30 +126,6 @@ process variantCalling {
     /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${MODEL_NAME}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
     """
 }
-
-process maskGen {
-    // Run maskara to get depth masks for the mapped reads.
-    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
-    publishDir "${params.out_dir}/${sample_ID}/mask_generation_4"
-
-    input:
-    tuple val(sample_ID), path(mapped_reads)
-    path bam_index
-
-    output:
-    tuple val(sample_ID), path("combined_masks.tsv"), emit: mask_file, optional: true
-
-    tuple val(sample_ID), path("*_mask.tsv"), emit: hits, optional: true
-    tuple val(sample_ID), path("NO_REF*"), emit: misses, optional: true
-
-    script:
-    // The use of compgen bothers me a bit (can't use [] as it doesn't support glob), but as long as it's run on BASH it should be okay.
-    """
-    maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads}
-    if compgen -G *_mask.tsv; then cat *_mask.tsv > combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
-    """
-}
-
 
 process makeConsensus {
     // Apply the mask and variants to their appropriate consensus files. 
