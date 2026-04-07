@@ -7,7 +7,7 @@ process kraken2Run {
     container "${params.viral_db}@${params.viral_db_sha}"
     publishDir "${params.out_dir}/${sample_ID}/kraken2_krona_plots", mode: 'copy'
 
-    debug true
+    debug false
 
     input:
     // Plan to run on raw input reads, but may need to consider trimming beforehand.
@@ -28,7 +28,7 @@ process kronaRun {
     container "${params.viral_db}@${params.viral_db_sha}"
     publishDir "${params.out_dir}/${sample_ID}/kraken2_krona_plots", mode: 'copy'
 
-    debug true
+    debug false
 
     input:
     tuple val(sample_ID), path(report)
@@ -46,7 +46,7 @@ process kronaMulti {
     container "${params.viral_db}@${params.viral_db_sha}"
     publishDir "${params.out_dir}/kraken2_krona_plots_combined", mode: 'copy'
 
-    debug true
+    debug false
 
     input:
     path(reports)
