@@ -1,4 +1,4 @@
-name: WaSPPipe_mk2
+name: WaSPPipe
 channels:
   - bioconda
   - conda-forge
@@ -9,4 +9,7 @@ dependencies:
   - pigz
   - samtools
   - minimap2
+  - bcftools
   - pip
+  - pip:
+    - maskara
