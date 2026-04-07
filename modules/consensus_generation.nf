@@ -4,6 +4,7 @@
 // I'm splitting read length filtering and then primer trimming in case other processes need to be added in between.
 
 process readFilter {
+    container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
     publishDir "${params.out_dir}/${sample_ID}/filtered_reads_1"
 
@@ -25,6 +26,7 @@ process readFilter {
 
 process primerTrimming {
     // At this stage the plan is to just hard trim from the ends of each read.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
     publishDir "${params.out_dir}/${sample_ID}/primer_trimming_2"
 
@@ -44,6 +46,7 @@ process primerTrimming {
 
 process readMapper {
     // Classic minimap2 of reads to start with, more elaborate approaches may be needed down the line.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
     publishDir "${params.out_dir}/${sample_ID}/read_mapping_3"
 
@@ -77,6 +80,7 @@ process readMapper {
 
 process maskGen {
     // Run maskara to get depth masks for the mapped reads.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
     publishDir "${params.out_dir}/${sample_ID}/mask_generation_4"
 
@@ -128,7 +132,8 @@ process variantCalling {
 }
 
 process makeConsensus {
-    // Apply the mask and variants to their appropriate consensus files. 
+    // Apply the mask and variants to their appropriate consensus files.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
     publishDir "${params.out_dir}/${sample_ID}/consensus_generation_6"
 
