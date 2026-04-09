@@ -16,5 +16,6 @@ process aphorismGenerator {
     """
     python3 ${projectDir}/resources/scripts/random_line.py ${aphorism_file}
     """
+    
 
 }
