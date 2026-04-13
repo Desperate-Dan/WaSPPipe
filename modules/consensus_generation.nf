@@ -6,7 +6,7 @@
 process readFilter {
     container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
-    publishDir "output/${sample_ID}/filtered_reads_1"
+    publishDir "output/${sample_ID}/filtered_reads_1", mode: "copy"
 
     input:
     tuple val(sample_ID), path(sample_ID_files)
@@ -28,7 +28,7 @@ process primerTrimming {
     // At this stage the plan is to just hard trim from the ends of each read.
     container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
-    publishDir "output/${sample_ID}/primer_trimming_2"
+    publishDir "output/${sample_ID}/primer_trimming_2", mode: "copy"
 
     input:
     tuple val(sample_ID), path(filtered_reads)
@@ -48,7 +48,7 @@ process readMapper {
     // Classic minimap2 of reads to start with, more elaborate approaches may be needed down the line.
     container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
-    publishDir "output/${sample_ID}/read_mapping_3"
+    publishDir "output/${sample_ID}/read_mapping_3", mode: "copy"
 
     debug true
 
@@ -82,7 +82,7 @@ process maskGen {
     // Run maskara to get depth masks for the mapped reads.
     container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
-    publishDir "output/${sample_ID}/mask_generation_4"
+    publishDir "output/${sample_ID}/mask_generation_4", mode: "copy"
 
     input:
     tuple val(sample_ID), path(mapped_reads)
@@ -107,7 +107,7 @@ process variantCalling {
     // This is the latest docker container for Clair3 as of 20260304
     // NB turns out v2.0.0 is actually bugged in some capacity where it won't find the fasta.fai no matter what I do. Using previous v1.2.0.
     container "hkubal/clair3:v1.2.0"
-    publishDir "output/${sample_ID}/variant_calling_5"
+    publishDir "output/${sample_ID}/variant_calling_5", mode: "copy"
 
     debug false
 
@@ -135,7 +135,7 @@ process makeConsensus {
     // Apply the mask and variants to their appropriate consensus files.
     container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
-    publishDir "output/${sample_ID}/consensus_generation_6"
+    publishDir "output/${sample_ID}/consensus_generation_6", mode: "copy"
 
     input:
     tuple val(sample_ID), path(variant_file)
