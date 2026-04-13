@@ -1,6 +1,8 @@
 # WaSPPipe
 The consensus generation pipeline for the WaSPP project.
 
+https://github.com/Desperate-Dan/WaSPPipe
+
 ## This pipeline is under active development and is liable to change at any point with no notice.
 Initially the pipeline will focus on reference based consensus generation using the viral family references used for the primer coverage analysis. This will certainly be broadened in scope in the future and may include:
 
