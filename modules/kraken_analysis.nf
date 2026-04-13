@@ -5,7 +5,7 @@
 
 process kraken2Run {
     container "${params.viral_db}@${params.viral_db_sha}"
-    publishDir "${params.out_dir}/${sample_ID}/kraken2_krona_plots", mode: 'copy'
+    publishDir "output/${sample_ID}/kraken2_krona_plots", mode: 'copy'
 
     debug false
 
@@ -26,7 +26,7 @@ process kraken2Run {
 
 process kronaRun {
     container "${params.viral_db}@${params.viral_db_sha}"
-    publishDir "${params.out_dir}/${sample_ID}/kraken2_krona_plots", mode: 'copy'
+    publishDir "output/${sample_ID}/kraken2_krona_plots", mode: 'copy'
 
     debug false
 
@@ -44,7 +44,7 @@ process kronaRun {
 
 process kronaMulti {
     container "${params.viral_db}@${params.viral_db_sha}"
-    publishDir "${params.out_dir}/kraken2_krona_plots_combined", mode: 'copy'
+    publishDir "output/kraken2_krona_plots_combined", mode: 'copy'
 
     debug false
 
