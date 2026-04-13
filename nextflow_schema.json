@@ -23,7 +23,6 @@
           "type": "string",
           "format": "path",
           "title": "Reference file",
-          "default": "${projectDir}/resources/reference_fastas/virus_family_references.fasta",
           "description": "The reference file your samples will be mapped against for reference based assembly (default: WaSPP curated viral family references).",
           "help_text": "Change this to a custom reference file to map your samples against. The default contains all NCBI reference sequences for the members of the viral families of interest to the WaSPP project."
         },
@@ -37,6 +36,7 @@
         "baseQ": {
           "type": "integer",
           "title": "Base Quality",
+          "default": 20,
           "description": "Change the minimum base quality threshold (default: 20).",
           "help_text": "If a base quality score is below this value it won't be considered as part of the count for read depth."
         },
@@ -50,6 +50,7 @@
         "mappingQ": {
           "type": "integer",
           "title": "Mapping Quality",
+          "default": 15,
           "description": "Change the minimum read mapping quality threshold (default: 15).",
           "help_text": "If the read mapping quality is below this threshold it won't be considered as part of the count for minimum read count."
         },
