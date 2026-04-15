@@ -1,5 +1,5 @@
 # WaSPPipe
-The consensus generation pipeline for the WaSPP project.
+The consensus generation pipeline for the WaSPP project. Currently the pipeline runs Kraken2 on your raw reads using the Viral database, then does reference based mapping on your samples using a curated set of viral references, then same set that was used in the primer development and testing.
 
 https://github.com/Desperate-Dan/WaSPPipe
 
@@ -67,7 +67,7 @@ You may also wish to view the Kraken2 reports for each of the barcodes, to see w
 </p>
 
 ### Errors
-As this pipeline is in an early stage of development we expected there to be a range of new an exciting errors produced when running the pipeline. If you pipeline says "Stopped with error", the first thing to do is look at the "Logs" tab in your EPI2ME run, and read the "Nextflow Logs" section. It is possible that the pipeline can't see your fastq_pass folder for instance. 
+As this pipeline is in an early stage of development we expect there to be a range of new an exciting errors produced when running it. If your pipeline says "Stopped with error", the first thing to do is look at the "Logs" tab in your EPI2ME run, and read the "Nextflow Logs" section. It is possible that the pipeline can't see your fastq_pass folder for instance. 
 
 If you can't see anything obvious here, please get in touch with me, either through raising an Issue on this page, or via email. To make it as easy as possible for me to help you, please send me the log files produced by the run that fails. You will find these in the folder where the "Ouput" folder is contained (see above as to how to navigate to this folder), as in the image below.
 
