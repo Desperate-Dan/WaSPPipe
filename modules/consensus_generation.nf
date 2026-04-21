@@ -89,7 +89,7 @@ process maskGen {
     path bam_index
 
     output:
-    tuple val(sample_ID), path("combined_masks.tsv"), emit: mask_file, optional: true
+    tuple val(sample_ID), path("*_combined_masks.tsv"), emit: mask_file, optional: true
 
     tuple val(sample_ID), path("*_mask.tsv"), emit: hits, optional: true
     tuple val(sample_ID), path("NO_REF*"), emit: misses, optional: true
@@ -98,7 +98,7 @@ process maskGen {
     // The use of compgen bothers me a bit (can't use [] as it doesn't support glob), but as long as it's run on BASH it should be okay.
     """
     maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads}
-    if compgen -G *_mask.tsv; then cat *_mask.tsv > combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
+    if compgen -G *_mask.tsv; then cat *_mask.tsv > ${sample_ID}_combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
     """
 }
 
@@ -121,13 +121,15 @@ process variantCalling {
 
     output:
     tuple val(sample_ID), path("merge_output.vcf.gz"), emit: variant_file, optional: true
-    path "merge_output.vcf.gz.tbi", emit: variant_index, optional: true
+    path "*_merge_output.vcf.gz.tbi", emit: variant_index, optional: true
     path "*", optional: true
 
     script:
     MODEL_NAME = "r1041_e82_400bps_hac_v410"
     """
     /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${MODEL_NAME}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
+    mv merge_output.vcf.gz ${sample_ID}_merge_output.vcf.gz
+    mv merge_output.vcf.gz.tbi ${sample_ID}_merge_output.vcf.gz.tbi
     """
 }
 
@@ -149,7 +151,7 @@ process makeConsensus {
     script:
     // May need to add some variant parsing here or in a separate step.
     """
-    bcftools consensus -f ${input_references} -m ${mask_file} -o temp.fasta merge_output.vcf.gz ${variant_file}
+    bcftools consensus -f ${input_references} -m ${mask_file} -o temp.fasta ${variant_file}
     python3 ${projectDir}/resources/scripts/fasta_xtractor.py temp.fasta ${mask_file} ${sample_ID}
     if compgen -G ${sample_ID}*.fasta; then cat ${sample_ID}*.fasta > ${sample_ID}_combined.fasta; fi
     """
