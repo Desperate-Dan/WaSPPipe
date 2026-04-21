@@ -128,7 +128,7 @@ process variantCalling {
     MODEL_NAME = "r1041_e82_400bps_hac_v410"
     """
     /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${MODEL_NAME}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
-    if [ -f " merge_output.vcf.gz ]; then
+    if [ -f merge_output.vcf.gz ]; then
         mv merge_output.vcf.gz ${sample_ID}_merge_output.vcf.gz
         mv merge_output.vcf.gz.tbi ${sample_ID}_merge_output.vcf.gz.tbi
     fi
