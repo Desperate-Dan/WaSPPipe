@@ -5,7 +5,7 @@
 
 process readFilter {
     container "${params.consensus_func}@${params.consensus_func_sha}"
-    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
     publishDir "output/${sample_ID}/filtered_reads_1", mode: "copy"
 
     input:
@@ -27,7 +27,7 @@ process readFilter {
 process primerTrimming {
     // At this stage the plan is to just hard trim from the ends of each read.
     container "${params.consensus_func}@${params.consensus_func_sha}"
-    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
     publishDir "output/${sample_ID}/primer_trimming_2", mode: "copy"
 
     input:
@@ -47,7 +47,7 @@ process primerTrimming {
 process readMapper {
     // Classic minimap2 of reads to start with, more elaborate approaches may be needed down the line.
     container "${params.consensus_func}@${params.consensus_func_sha}"
-    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
     publishDir "output/${sample_ID}/read_mapping_3", mode: "copy"
 
     debug true
@@ -58,7 +58,7 @@ process readMapper {
 
     output:
     tuple val(sample_ID), path("*.sorted.bam"), emit: mapped_reads
-    path "*.bai", emit: bam_index, optional: true
+    tuple val(sample_ID), path("*.bai"), emit: bam_index, optional: true
     path "*.fai", emit: ref_index
     path "*"
 
@@ -81,12 +81,12 @@ process readMapper {
 process maskGen {
     // Run maskara to get depth masks for the mapped reads.
     container "${params.consensus_func}@${params.consensus_func_sha}"
-    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
     publishDir "output/${sample_ID}/mask_generation_4", mode: "copy"
 
     input:
     tuple val(sample_ID), path(mapped_reads)
-    path bam_index
+    tuple val(sample_ID), path(bam_index)
 
     output:
     tuple val(sample_ID), path("*_combined_masks.tsv"), emit: mask_file, optional: true
@@ -115,13 +115,12 @@ process variantCalling {
     input:
     tuple val(sample_ID), path(mapped_reads)
     path input_references
-    path bam_index
+    tuple val(sample_ID), path(bam_index)
     path ref_index
-    tuple val(sample_ID), path (mask_file) // adding the mask file just to ensure we only call variants on samples we can make a ref from.
+    tuple val(sample_ID), path (mask_file) // adding the mask file just to ensure we only call variants on samples we can make a ref from. NB This doesn't actually work! it gives a random maskfile... will add channel parsing to main.nf
 
     output:
-    tuple val(sample_ID), path("merge_output.vcf.gz"), emit: variant_file, optional: true
-    path "*_merge_output.vcf.gz.tbi", emit: variant_index, optional: true
+    tuple val(sample_ID), path("*_merge_output.vcf.gz"), emit: variant_file, optional: true
     path "*", optional: true
 
     script:
@@ -130,7 +129,6 @@ process variantCalling {
     /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${MODEL_NAME}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
     if [ -f merge_output.vcf.gz ]; then
         mv merge_output.vcf.gz ${sample_ID}_merge_output.vcf.gz
-        mv merge_output.vcf.gz.tbi ${sample_ID}_merge_output.vcf.gz.tbi
     fi
     """
 }
@@ -138,12 +136,11 @@ process variantCalling {
 process makeConsensus {
     // Apply the mask and variants to their appropriate consensus files.
     container "${params.consensus_func}@${params.consensus_func_sha}"
-    conda "${HOME}/miniconda3/envs/WaSPPipe_mk2"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
     publishDir "output/${sample_ID}/consensus_generation_6", mode: "copy"
 
     input:
     tuple val(sample_ID), path(variant_file)
-    path variant_index
     tuple val(sample_ID), path (mask_file)
     path input_references
 
@@ -153,6 +150,7 @@ process makeConsensus {
     script:
     // May need to add some variant parsing here or in a separate step.
     """
+    bcftools index -t ${variant_file}
     bcftools consensus -f ${input_references} -m ${mask_file} -o temp.fasta ${variant_file}
     python3 ${projectDir}/resources/scripts/fasta_xtractor.py temp.fasta ${mask_file} ${sample_ID}
     if compgen -G ${sample_ID}*.fasta; then cat ${sample_ID}*.fasta > ${sample_ID}_combined.fasta; fi

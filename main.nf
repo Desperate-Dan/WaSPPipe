@@ -46,8 +46,13 @@ workflow consensus_wf {
     hitsAndMisses_ch = hits_ch.flatMap().concat(misses_ch.flatMap())
     hitsAndMisses_ch.collectFile(name: "Ref_matches_report.csv", newLine: true, storeDir: "${launchDir}/output", sort: true) {it -> it.toString().replace("_mask.tsv","").replace("[","").replace("]","").replace(" ","")}
 
-    variantCalling(readMapper.out.mapped_reads, inRefs_ch, readMapper.out.bam_index, readMapper.out.ref_index, maskGen.out.mask_file)
-    makeConsensus(variantCalling.out.variant_file, variantCalling.out.variant_index, maskGen.out.mask_file, inRefs_ch)
+    // Join the outputs of maskGen and readMapper, keyed by barcode number
+    combined_ch = readMapper.out.mapped_reads.join(readMapper.out.bam_index).join(maskGen.out.mask_file)
+    variantCalling(combined_ch.map { [it[0], it[1]] }, inRefs_ch, combined_ch.map { [it[0], it[2]] }, readMapper.out.ref_index, combined_ch.map { [it[0], it[3]] })
+    
+    // Join the outputs of variantCalling with mask files, keyed by barcode number
+    makeConsensus_ch = variantCalling.out.variant_file.join(maskGen.out.mask_file)
+    makeConsensus(makeConsensus_ch.map { [it[0], it[1]] }, makeConsensus_ch.map { [it[0], it[2]] }, inRefs_ch)
 }
 
 workflow {
