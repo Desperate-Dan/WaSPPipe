@@ -23,7 +23,7 @@ workflow kraken_wf {
     inBarcode_ch = Channel.fromPath("${runDir}/*", type: "dir", checkIfExists:true, maxDepth:1).map { [it.baseName, get_fq_files_in_dir(it)]}
     kraken2Run(inBarcode_ch)
     kronaRun(kraken2Run.out.report)
-    kronaMulti(kraken2Run.out.reports.collect())
+    kronaMulti(kraken2Run.out.reports.collect(sort: true))
 }
 
 workflow consensus_wf {
