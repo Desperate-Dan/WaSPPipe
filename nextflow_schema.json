@@ -101,7 +101,7 @@
         "individual_krona": {
           "type": "boolean",
           "title": "Individual Krona plots",
-          "description": "Choose whether to generate individual krona plots for each sample of not (default: False).",
+          "description": "Choose whether to generate individual krona plots for each sample or not (default: False).",
           "help_text": "",
           "default": false
         }
