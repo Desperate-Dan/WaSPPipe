@@ -94,11 +94,11 @@ WaSPPipe is now ready for use. To run the pipeline the only required input is th
 ```
 nextflow run /path/to/WaSPPipe-1.0.0/main.nf --fastq /path/to/fastq_pass/
 ```
-You can alter any of the parameters for the pipeline on the command line by using the appropriate flag. All the possible parameters can be found in the [nextflow.config](nextflow.config) file. In the ```params``` section of the file, look for the appropriate option and add ```--``` to it for use on the command line. For example if you wanted to alter the ```max_length``` parameter you would add the ```--max_length``` flag to the command line argument with the value you would like to change it to:
+You can alter any of the parameters for the pipeline on the command line by using the appropriate flag. For a description of all relevant parameters for the pipline check out the [PARAMETERS.md](PARAMETERS.md) file. For example if you wanted to alter the ```max_length``` parameter you would add the ```--max_length``` flag to the command line argument with the value you would like to change it to:
 ```
 nextflow run /path/to/WaSPPipe-1.0.0/main.nf --fastq /path/to/fastq_pass/ --max_length 2000
 ```
-For a description of all relevant parameters for the pipline check out the [PARAMETERS.md](PARAMETERS.md) file.
+
 
 
 ### Future additions to WaSPPipe
