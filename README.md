@@ -98,6 +98,7 @@ You can alter any of the parameters for the pipeline on the command line by usin
 ```
 nextflow run /path/to/WaSPPipe-1.0.0/main.nf --fastq /path/to/fastq_pass/ --max_length 2000
 ```
+For a description of all relevant parameters for the pipline check out the [PARAMETERS.md](PARAMETERS.md) file.
 
 
 ### Future additions to WaSPPipe
