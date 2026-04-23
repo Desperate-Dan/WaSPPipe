@@ -9,6 +9,7 @@ This document describes all configurable parameters for the WaSPPipe pipeline.
 Define where the pipeline should find input data and change some frequently used options.
 
 ### fastq
+- **flag** ```--fastq```
 - **Type:** String (path)
 - **Required:** Yes
 - **Description:** Provide the path to the fastq_pass directory for your run.
