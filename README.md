@@ -77,6 +77,28 @@ If you can't see anything obvious here, please get in touch with me, either thro
   <img src="docs/Output_folder.png" alt="Output folder contents" width="700" />
 </p>
 
+## Command line WaSPPipe
+To run this pipeline on a BASH command line you need to have [nextflow](https://docs.seqera.io/nextflow/install) and [docker](https://docs.docker.com/engine/install/) installed on your computer. Verify the installation of these two tools by running:
+```
+nextflow -version
+docker --version
+```
+#### Note that if you are using [docker desktop](https://docs.docker.com/desktop/) you may need to start the docker desktop program before docker commands will work in your command line environment.
+
+Next you need to download the latest release of WaSPPipe which you will find [here](https://github.com/Desperate-Dan/WaSPPipe/releases). We recommend downloading the ```.tar.gz``` file to work with the commands below. Move the downloaded file to where you would like the files for the pipeline to be kept, and extract the folder with the following command:
+```
+tar -xf WaSPPipe-1.0.0.tar.gz
+```
+#### Be sure to change the version number in the above command (1.0.0 in this example) to the version appropriate for your file.
+WaSPPipe is now ready for use. To run the pipeline the only required input is the ```--fastq``` flag, which requires the path to the ```fastq_pass``` folder for your sequencing run. You could run the pipeline with a command such as:
+```
+nextflow run /path/to/WaSPPipe-1.0.0/main.nf --fastq /path/to/fastq_pass/
+```
+You can alter any of the parameters for the pipeline on the command line by using the appropriate flag. All the possible parameters can be found in the [nextflow.config](nextflow.config) file. In the ```params``` section of the file, look for the appropriate option and add ```--``` to it for use on the command line. For example if you wanted to alter the ```max_length``` parameter you would add the ```--max_length``` flag to the command line argument with the value you would like to change it to:
+```
+nextflow run /path/to/WaSPPipe-1.0.0/main.nf --fastq /path/to/fastq_pass/ --max_length 2000
+```
+
 
 ### Future additions to WaSPPipe
  - More (updated) references.
