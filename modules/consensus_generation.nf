@@ -59,14 +59,18 @@ process readMapper {
     output:
     tuple val(sample_ID), path("*.sorted.bam"), emit: mapped_reads
     tuple val(sample_ID), path("*.bai"), emit: bam_index, optional: true
-    path "*.fai", emit: ref_index
+    tuple val(sample_ID), path("*_read_counts.tsv"), emit: read_counts, optional: true
+    tuple val(sample_ID), path("*.fai"), emit: ref_index
+    tuple val(sample_ID), path(input_references), emit: ref_fasta
     path "*"
 
     script:
     // The samtools view section removes any unmapped reads from the output bam file for space efficiency.
     // The reference indexing may not be necessary unless there is a new reference specified, could just host the index file like the reference file itself.
+    // WHat happens if absolutely nothing maps? Need to investigate...
     """
     minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
+    python3 ${projectDir}/resources/scripts/bam_read_counter.py -b ${sample_ID}.sorted.bam -o ${sample_ID}_read_counts.tsv -m 1
     samtools index ${sample_ID}.sorted.bam
     samtools faidx ${input_references}
     """
@@ -77,6 +81,33 @@ process readMapper {
 // Is that more computationally efficient than run samples x N consensus instances or variant calling?
 // This may include calling variants on samples below whatever our read depth threshold will be.
 // Need to consider if two references are quite close together we might need to re map after an initial mapping to see if we mop anything else up.
+
+process topMapper {
+    // This process will take the mapped reads and their corresponding reference sequences and remap them to just the reference sequence they mapped best to in the initial mapping step. This is to try and mop up any reads that may have been missed in the initial mapping due to the presence of multiple similar reference sequences.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/${sample_ID}/top_mapping_3.1", mode: "copy"
+
+    input:
+    tuple val(sample_ID), path(trimmed_reads)
+    tuple val(sample_ID), path(read_counts)
+    tuple val(sample_ID), path(input_references)
+
+    output:
+    tuple val(sample_ID), path("*.sorted.bam"), emit: top_mapped_reads
+    tuple val(sample_ID), path("*.bai"), emit: top_bam_index, optional: true
+    tuple val(sample_ID), path("*top_hit*.fasta"), emit: top_ref_fasta, optional: true
+    tuple val(sample_ID), path("*.fai"), emit: top_ref_index
+    path "*"
+
+    script:
+    """
+    python3 ${projectDir}/resources/scripts/fasta_xtractor.py -f ${input_references} -b ${read_counts} -o ${sample_ID}_top_hit --top_only
+    minimap2 -a --secondary=no -x map-ont ${sample_ID}_top_hit*.fasta ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
+    samtools index ${sample_ID}_top_mapped.sorted.bam
+    samtools faidx ${sample_ID}_top_hit*.fasta
+    """
+}
 
 process maskGen {
     // Run maskara to get depth masks for the mapped reads.
@@ -114,9 +145,9 @@ process variantCalling {
     // Need to provide the bam index and reference index; may want to add another step here to deal with that.
     input:
     tuple val(sample_ID), path(mapped_reads)
-    path input_references
+    tuple val(sample_ID), path(input_references)
     tuple val(sample_ID), path(bam_index)
-    path ref_index
+    tuple val(sample_ID), path(ref_index)
     tuple val(sample_ID), path (mask_file) // adding the mask file just to ensure we only call variants on samples we can make a ref from. NB This doesn't actually work! it gives a random maskfile... will add channel parsing to main.nf
 
     output:
@@ -141,7 +172,7 @@ process makeConsensus {
     input:
     tuple val(sample_ID), path(variant_file)
     tuple val(sample_ID), path (mask_file)
-    path input_references
+    tuple val(sample_ID), path(input_references)
 
     output:
     path "${sample_ID}*.fasta"
@@ -151,7 +182,7 @@ process makeConsensus {
     """
     bcftools index -t ${variant_file}
     bcftools consensus -f ${input_references} -m ${mask_file} -o temp.fasta ${variant_file}
-    python3 ${projectDir}/resources/scripts/fasta_xtractor.py temp.fasta ${mask_file} ${sample_ID}
+    python3 ${projectDir}/resources/scripts/fasta_xtractor.py -f temp.fasta -b ${mask_file} -s ${sample_ID}
     if compgen -G ${sample_ID}*.fasta; then cat ${sample_ID}*.fasta > ${sample_ID}_combined.fasta; fi
     """
 }
