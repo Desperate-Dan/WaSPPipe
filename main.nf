@@ -18,9 +18,10 @@ workflow aphorism_wf {
 }
 
 workflow kraken_wf {
-    // Should condense this into happening in the main workflow bit below.
-    runDir = file("${params.fastq}", type: "dir", checkIfExists:true)
-    inBarcode_ch = Channel.fromPath("${runDir}/*", type: "dir", checkIfExists:true, maxDepth:1).map { [it.baseName, get_fq_files_in_dir(it)]}
+    take:
+    inBarcode_ch
+    
+    main:
     kraken2Run(inBarcode_ch)
     if (params.individual_krona) {
         kronaRun(kraken2Run.out.report)    
@@ -30,9 +31,10 @@ workflow kraken_wf {
 
 workflow consensus_wf {
     // Define the input channels
-    // These lines for fastq dir parsing are taken from rmcolq's workflow https://github.com/rmcolq/pantheon
-    runDir = file("${params.fastq}", type: "dir", checkIfExists:true)
-    inBarcode_ch = Channel.fromPath("${runDir}/*", type: "dir", checkIfExists:true, maxDepth:1).map { [it.baseName, get_fq_files_in_dir(it)]}
+    take: 
+    inBarcode_ch
+    
+    main:
     inMaxLen_ch = Channel.value("${params.max_len}")
     inMinLen_ch = Channel.value("${params.min_len}")
     inTrimLen_ch = Channel.value("${params.trim_len}")
@@ -61,7 +63,18 @@ workflow {
     if (params.aphorisms) {
         aphorism_wf()
     }
-    kraken_wf()
-    consensus_wf()
+    
+    // These lines for fastq dir parsing have been modified from rmcolq's workflow https://github.com/rmcolq/pantheon
+    runDir = file("${params.fastq}", type: "dir", checkIfExists:true)
+    if (!params.parse_all) {
+        prefix = "barcode"
+    } else {
+        prefix = ""
+    }
+    
+    inBarcode_ch = Channel.fromPath("${runDir}/" + prefix + "*", type: "dir", checkIfExists:true, maxDepth:1).map { [it.baseName, get_fq_files_in_dir(it)]}
+    
+    kraken_wf(inBarcode_ch)
+    consensus_wf(inBarcode_ch)
     
 }

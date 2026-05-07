@@ -73,6 +73,12 @@
             "default": 30,
             "description": "Number of bases to trim from the ends of the reads to remove primers (default: 30bp).",
             "help_text": "Currently WaSPP primers are not longer than 30bp, so trimming this length should remove primer sequences from downstream analysis."
+        },
+        "parse_all": {
+            "type": "boolean",
+            "title": "Parse all folders in the fastq_pass folder",
+            "default": false,
+            "description": "By default the pipeline will only process folders in the fastq_pass directory that start with 'barcode', but if you want to parse all folders in the fastq_pass directory (if you want to include 'Unclassified' or have folders starting with something other than barcode) you can tick this box. WARNING: processing the 'Unclassified' folder can lead to very large files (>100GB) produced in the variant calling step!"
         }
       },
       "allOf": [
