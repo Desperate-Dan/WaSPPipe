@@ -78,7 +78,8 @@
             "type": "boolean",
             "title": "Parse all folders in the fastq_pass folder",
             "default": false,
-            "description": "By default the pipeline will only process folders in the fastq_pass directory that start with 'barcode', but if you want to parse all folders in the fastq_pass directory (if you want to include 'Unclassified' or have folders starting with something other than barcode) you can tick this box. WARNING: processing the 'Unclassified' folder can lead to very large files (>100GB) produced in the variant calling step!"
+            "description": "By default the pipeline will only process folders in the fastq_pass directory that start with 'barcode'",
+            "help_text": "but if you want to parse all folders in the fastq_pass directory (if you want to include 'Unclassified' or have folders starting with something other than 'barcode') you can tick this box. WARNING: processing the 'Unclassified' folder can significantly increase the runtime and memory usage!"
         }
       },
       "allOf": [
