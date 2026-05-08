@@ -70,7 +70,7 @@ process readMapper {
     // WHat happens if absolutely nothing maps? Need to investigate...
     """
     minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
-    python3 ${projectDir}/resources/scripts/bam_read_counter.py -b ${sample_ID}.sorted.bam -o ${sample_ID}_read_counts.tsv -m 1
+    bam_read_counter.py -b ${sample_ID}.sorted.bam -o ${sample_ID}_read_counts.tsv -m 1
     samtools index ${sample_ID}.sorted.bam
     samtools faidx ${input_references}
     """
@@ -102,7 +102,7 @@ process topMapper {
 
     script:
     """
-    python3 ${projectDir}/resources/scripts/fasta_xtractor.py -f ${input_references} -b ${read_counts} -o ${sample_ID}_top_hit --top_only
+    fasta_xtractor.py -f ${input_references} -b ${read_counts} -o ${sample_ID}_top_hit --top_only
     minimap2 -a --secondary=no -x map-ont ${sample_ID}_top_hit*.fasta ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
     samtools index ${sample_ID}_top_mapped.sorted.bam
     samtools faidx ${sample_ID}_top_hit*.fasta
@@ -171,7 +171,7 @@ process makeConsensus {
 
     input:
     tuple val(sample_ID), path(variant_file)
-    tuple val(sample_ID), path (mask_file)
+    tuple val(sample_ID), path(mask_file)
     tuple val(sample_ID), path(input_references)
 
     output:
@@ -182,7 +182,7 @@ process makeConsensus {
     """
     bcftools index -t ${variant_file}
     bcftools consensus -f ${input_references} -m ${mask_file} -o temp.fasta ${variant_file}
-    python3 ${projectDir}/resources/scripts/fasta_xtractor.py -f temp.fasta -b ${mask_file} -s ${sample_ID}
+    fasta_xtractor.py -f temp.fasta -b ${mask_file} -s ${sample_ID}
     if compgen -G ${sample_ID}*.fasta; then cat ${sample_ID}*.fasta > ${sample_ID}_combined.fasta; fi
     """
 }
