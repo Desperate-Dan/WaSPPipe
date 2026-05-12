@@ -80,6 +80,13 @@
             "default": false,
             "description": "By default the pipeline will only process folders in the fastq_pass directory that start with 'barcode'",
             "help_text": "but if you want to parse all folders in the fastq_pass directory (if you want to include 'Unclassified' or have folders starting with something other than 'barcode') you can tick this box. WARNING: processing the 'Unclassified' folder can significantly increase the runtime and memory usage!"
+        },
+        "top_hit_only": {
+            "type": "boolean",
+            "title": "Use only the top hit reference for each sample",
+            "default": false,
+            "description": "By default the pipeline will build a consensus sequence for each reference that has at least the 'read count' stated above mapped to it. If you want to build a consensus only for the top hit reference in each sample you can tick this box.",
+            "help_text": "This is particularly useful if your reference set contains many closely related sequences, as it can be difficult to determine which one is the best reference for a given sample. After an initial mapping step, the pipeline will check what reference has the most reads mapped to it, then will remap all reads in the sample to that reference."
         }
       },
       "allOf": [
