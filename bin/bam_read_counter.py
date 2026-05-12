@@ -102,14 +102,15 @@ Examples:
     filtered_refs.sort(key=lambda x: x[1], reverse=True)
     
     # Write to TSV file
-    try:
-        with open(args.output, "w") as f:
-            f.write("reference\treads_mapped\n")
-            for ref_name, count in filtered_refs:
-                f.write(f"{ref_name}\t{count}\n")
-    except Exception as e:
-        print(f"Error writing output file: {e}", file=sys.stderr)
-        sys.exit(1)
+    if read_counts:
+        try:
+            with open(args.output, "w") as f:
+                f.write("reference\treads_mapped\n")
+                for ref_name, count in filtered_refs:
+                    f.write(f"{ref_name}\t{count}\n")
+        except Exception as e:
+            print(f"Error writing output file: {e}", file=sys.stderr)
+            sys.exit(1)
     
     print(f"Wrote {len(filtered_refs)} references to {args.output}", file=sys.stderr)
     print(f"Total mapped reads: {sum(count for _, count in filtered_refs)}", file=sys.stderr)

@@ -67,7 +67,7 @@ process readMapper {
     script:
     // The samtools view section removes any unmapped reads from the output bam file for space efficiency.
     // The reference indexing may not be necessary unless there is a new reference specified, could just host the index file like the reference file itself.
-    // WHat happens if absolutely nothing maps? Need to investigate...
+    // What happens if absolutely nothing maps? Need to investigate... it breaks! (well in the topMapper step, but not here)
     """
     minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
     bam_read_counter.py -b ${sample_ID}.sorted.bam -o ${sample_ID}_read_counts.tsv -m 1
@@ -102,10 +102,10 @@ process topMapper {
 
     script:
     """
-    fasta_xtractor.py -f ${input_references} -b ${read_counts} -o ${sample_ID}_top_hit --top_only
-    minimap2 -a --secondary=no -x map-ont ${sample_ID}_top_hit*.fasta ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
+    fasta_xtractor.py -f ${input_references} -b ${read_counts} -o top_hit_${sample_ID} --top_only
+    minimap2 -a --secondary=no -x map-ont top_hit_${sample_ID}*.fasta ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
     samtools index ${sample_ID}_top_mapped.sorted.bam
-    samtools faidx ${sample_ID}_top_hit*.fasta
+    samtools faidx top_hit_${sample_ID}*.fasta
     """
 }
 
