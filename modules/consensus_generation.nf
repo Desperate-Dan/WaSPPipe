@@ -176,6 +176,7 @@ process makeConsensus {
 
     output:
     path "${sample_ID}*.fasta"
+    path "${sample_ID}*_combined.fasta", emit: combined_consensus
 
     script:
     // May need to add some variant parsing here or in a separate step.

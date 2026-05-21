@@ -2,7 +2,7 @@
 
 // Get the modules we need
 include { readFilter; primerTrimming; readMapper; topMapper; variantCalling; maskGen; makeConsensus } from './modules/consensus_generation.nf'
-include { aphorismGenerator } from './modules/misc_processes.nf'
+include { aphorismGenerator; analysisMetadata } from './modules/misc_processes.nf'
 include { kraken2Run; kronaRun; kronaMulti } from './modules/kraken_analysis.nf'
 
 //These lines for fastq dir parsing are taken from rmcolq's workflow https://github.com/rmcolq/pantheon
@@ -67,6 +67,8 @@ workflow consensus_wf {
     hitsAndMisses_ch = hits_ch.flatMap().concat(misses_ch.flatMap())
     hitsAndMisses_ch.collectFile(name: "Ref_matches_report.csv", newLine: true, storeDir: "${launchDir}/output", sort: true) {it -> it.toString().replace("_mask.tsv","").replace("[","").replace("]","").replace(" ","")}
 
+    analysisMetadata(hitsAndMisses_ch.collect(), Channel.value("${params.run_ID}"))
+    
 }
 
 workflow {
