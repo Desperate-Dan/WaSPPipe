@@ -19,6 +19,12 @@
           "description": "Provide the path to the fastq_pass directory for your run.",
           "help_text": "This should be the the path the the fastq_pass folder, which should contain a folder for each barcode in your run. This expects your data to be demultiplexed already, you will need to do that through Minknow if it is not already demultiplexed."
         },
+        "run_ID": {
+          "type": "string",
+          "title": "Run ID",
+          "description": "Provide the Run ID for your sequencing run.",
+          "help_text": "This should match the Run ID entered into REDCap."
+        },
         "ref": {
           "type": "string",
           "format": "path",
@@ -92,7 +98,8 @@
       "allOf": [
         {
           "required": [
-            "fastq"
+            "fastq",
+            "run_ID"
           ]
         }
       ]
