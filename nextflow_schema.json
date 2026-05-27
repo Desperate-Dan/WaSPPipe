@@ -85,7 +85,7 @@
             "title": "Clair3 model name",
             "default": "r1041_e82_400bps_hac_v500",
             "description": "The Clair3 model to use for variant calling (default: r1041_e82_400bps_hac_v500).",
-            "help_text": "This is the Clair3 model that will be used for variant calling. The default is a model trained on R10.4.1 data (r1041), with High Accuracy Basecalling (hac) with version 5.0.0 of Dorado (v500), which should be suitable for most applications. You can change this to a different model if you have specific requirements. If you are unsure of which model your reads have been basecalled with, you can check the fastq headers of your reads, which should contain the model name in the format 'basecall_model_version_id=dna_r10.4.1_e8.2_400bps_hac@v5.0.0'.",
+            "help_text": "This is the Clair3 model that will be used for variant calling. The default is a model trained on R10.4.1 data (r1041), with High Accuracy basecalling (hac) with version 5.0.0 of Dorado (v500), which should be suitable for most applications. You can change this to a different model if you have specific requirements. If you are unsure of which model your reads have been basecalled with, you can check the fastq headers of your reads, which should contain the model name in the format 'basecall_model_version_id=dna_r10.4.1_e8.2_400bps_hac@v5.0.0'.",
             "enum": ["r1041_e82_400bps_hac_v500", "r1041_e82_400bps_hac_v410", "r1041_e82_400bps_sup_v410", "r1041_e82_400bps_sup_v500"]
         },
         "parse_all": {
