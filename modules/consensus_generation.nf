@@ -137,7 +137,7 @@ process variantCalling {
     // Going to try Clair3 for this...
     // This is the latest docker container for Clair3 as of 20260304
     // NB turns out v2.0.0 is actually bugged in some capacity where it won't find the fasta.fai no matter what I do. Using previous v1.2.0.
-    container "hkubal/clair3:v1.2.0"
+    container "dmmalone/clair3_v2.0.1:added_models_20260527"
     publishDir "output/${sample_ID}/variant_calling_5", mode: "copy"
 
     debug false
@@ -149,7 +149,7 @@ process variantCalling {
     tuple val(sample_ID), path(bam_index)
     tuple val(sample_ID), path(ref_index)
     tuple val(sample_ID), path (mask_file)
-    val(clair3_model_name)
+    val(clair3_model)
 
     output:
     tuple val(sample_ID), path("*_merge_output.vcf.gz"), emit: variant_file, optional: true
@@ -157,7 +157,9 @@ process variantCalling {
 
     script: 
     """
-    /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${clair3_model_name}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
+    echo \$PWD
+    ls \$PWD
+    /opt/bin/run_clair3.sh --ref_fn="\$PWD/${input_references}" --bam_fn="\$PWD/${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${clair3_model}" --output="\$PWD" --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
     if [ -f merge_output.vcf.gz ]; then mv merge_output.vcf.gz ${sample_ID}_merge_output.vcf.gz; fi
     if [ -d tmp ]; then rm -r tmp; fi
     """
