@@ -50,14 +50,14 @@ workflow consensus_wf {
         maskGen(topMapper.out.top_mapped_reads, topMapper.out.top_bam_index)
         // Join the outputs of maskGen and readMapper, keyed by barcode number
         combined_ch = topMapper.out.top_mapped_reads.join(topMapper.out.top_ref_fasta).join(topMapper.out.top_bam_index).join(topMapper.out.top_ref_index).join(maskGen.out.mask_file)
-        variantCalling(combined_ch.map { [it[0], it[1]] }, combined_ch.map { [it[0], it[2]] }, combined_ch.map { [it[0], it[3]] }, combined_ch.map { [it[0], it[4]] }, combined_ch.map { [it[0], it[5]] })
+        variantCalling(combined_ch.map { [it[0], it[1]] }, combined_ch.map { [it[0], it[2]] }, combined_ch.map { [it[0], it[3]] }, combined_ch.map { [it[0], it[4]] }, combined_ch.map { [it[0], it[5]] }, Channel.value("${params.clair3_model_name}"))
         // Join the outputs of variantCalling with mask files, keyed by barcode number
         makeConsensus_ch = variantCalling.out.variant_file.join(maskGen.out.mask_file).join(topMapper.out.top_ref_fasta)
         makeConsensus(makeConsensus_ch.map { [it[0], it[1]] }, makeConsensus_ch.map { [it[0], it[2]] }, makeConsensus_ch.map { [it[0], it[3]] })
     } else {
         maskGen(readMapper.out.mapped_reads, readMapper.out.bam_index)
         combined_ch = readMapper.out.mapped_reads.join(readMapper.out.ref_fasta).join(readMapper.out.bam_index).join(readMapper.out.ref_index).join(maskGen.out.mask_file)
-        variantCalling(combined_ch.map { [it[0], it[1]] }, combined_ch.map { [it[0], it[2]] }, combined_ch.map { [it[0], it[3]] }, combined_ch.map { [it[0], it[4]] }, combined_ch.map { [it[0], it[5]] })
+        variantCalling(combined_ch.map { [it[0], it[1]] }, combined_ch.map { [it[0], it[2]] }, combined_ch.map { [it[0], it[3]] }, combined_ch.map { [it[0], it[4]] }, combined_ch.map { [it[0], it[5]] }, Channel.value("${params.clair3_model_name}"))
         makeConsensus_ch = variantCalling.out.variant_file.join(maskGen.out.mask_file).join(readMapper.out.ref_fasta)
         makeConsensus(makeConsensus_ch.map { [it[0], it[1]] }, makeConsensus_ch.map { [it[0], it[2]] }, makeConsensus_ch.map { [it[0], it[3]] })
     }

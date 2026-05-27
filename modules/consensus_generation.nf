@@ -148,16 +148,16 @@ process variantCalling {
     tuple val(sample_ID), path(input_references)
     tuple val(sample_ID), path(bam_index)
     tuple val(sample_ID), path(ref_index)
-    tuple val(sample_ID), path (mask_file) // adding the mask file just to ensure we only call variants on samples we can make a ref from. NB This doesn't actually work! it gives a random maskfile... will add channel parsing to main.nf
+    tuple val(sample_ID), path (mask_file)
+    val(clair3_model_name)
 
     output:
     tuple val(sample_ID), path("*_merge_output.vcf.gz"), emit: variant_file, optional: true
     path "*", optional: true
 
-    script:
-    MODEL_NAME = "r1041_e82_400bps_hac_v410"
+    script: 
     """
-    /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${MODEL_NAME}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
+    /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${clair3_model_name}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
     if [ -f merge_output.vcf.gz ]; then mv merge_output.vcf.gz ${sample_ID}_merge_output.vcf.gz; fi
     if [ -d tmp ]; then rm -r tmp; fi
     """
