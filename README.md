@@ -87,16 +87,16 @@ docker --version
 
 Next you need to download the latest release of WaSPPipe which you will find [here](https://github.com/Desperate-Dan/WaSPPipe/releases). We recommend downloading the ```.tar.gz``` file to work with the commands below. Move the downloaded file to where you would like the files for the pipeline to be kept, and extract the folder with the following command:
 ```
-tar -xf WaSPPipe-1.1.3-dev.tar.gz
+tar -xf WaSPPipe-1.0.1-dev.tar.gz
 ```
-#### Be sure to change the version number in the above command (1.1.3-dev in this example) to the version appropriate for your file.
+#### Be sure to change the version number in the above command (1.0.1-dev in this example) to the version appropriate for your file.
 WaSPPipe is now ready for use. To run the pipeline the only required input is the ```--fastq``` flag, which requires the path to the ```fastq_pass``` folder for your sequencing run. You could run the pipeline with a command such as:
 ```
-nextflow run /path/to/WaSPPipe-1.1.3-dev/main.nf --fastq /path/to/fastq_pass/
+nextflow run /path/to/WaSPPipe-1.0.1-dev/main.nf --fastq /path/to/fastq_pass/
 ```
 You can alter any of the parameters for the pipeline on the command line by using the appropriate flag. For a description of all relevant parameters for the pipline check out the [PARAMETERS.md](PARAMETERS.md) file. For example if you wanted to alter the ```max_length``` parameter you would add the ```--max_length``` flag to the command line argument with the value you would like to change it to:
 ```
-nextflow run /path/to/WaSPPipe-1.1.3-dev/main.nf --fastq /path/to/fastq_pass/ --max_length 2000
+nextflow run /path/to/WaSPPipe-1.0.1-dev/main.nf --fastq /path/to/fastq_pass/ --max_length 2000
 ```
 
 
