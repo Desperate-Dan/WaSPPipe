@@ -66,7 +66,6 @@ process readMapper {
 
     script:
     // The samtools view section removes any unmapped reads from the output bam file for space efficiency.
-    // The reference indexing may not be necessary unless there is a new reference specified, could just host the index file like the reference file itself.
     // What happens if absolutely nothing maps? Need to investigate... it breaks! (well in the topMapper step, but not here)
     """
     minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
@@ -135,14 +134,12 @@ process maskGen {
 
 process variantCalling {
     // Going to try Clair3 for this...
-    // This is the latest docker container for Clair3 as of 20260304
-    // NB turns out v2.0.0 is actually bugged in some capacity where it won't find the fasta.fai no matter what I do. Using previous v1.2.0.
+    // This is a copy of the latest docker container for Clair3 as of 20260527, with the updated models manually added in, then committed to my docker profile.
     container "dmmalone/clair3_v2.0.1:added_models_20260527"
     publishDir "output/${sample_ID}/variant_calling_5", mode: "copy"
 
     debug false
 
-    // Need to provide the bam index and reference index; may want to add another step here to deal with that.
     input:
     tuple val(sample_ID), path(mapped_reads)
     tuple val(sample_ID), path(input_references)
@@ -155,7 +152,9 @@ process variantCalling {
     tuple val(sample_ID), path("*_merge_output.vcf.gz"), emit: variant_file, optional: true
     path "*", optional: true
 
-    script: 
+    script:
+    // The addition of \$PWD to the inputs of clair3 is vital for getting clair3 to locate the files. In general Nextflow tells docker to mount the input files with the full path to the work subfolder that the analysis is being run in.
+    //Previous versions of clair3 were able to find the files without \$PWD but the latest versions do not, presumably this is to do with the python wrapper that was introduced from v2.0.0 onwards.
     """
     /opt/bin/run_clair3.sh --ref_fn="\$PWD/${input_references}" --bam_fn="\$PWD/${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${clair3_model}" --output="\$PWD" --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
     if [ -f merge_output.vcf.gz ]; then mv merge_output.vcf.gz ${sample_ID}_merge_output.vcf.gz; fi
