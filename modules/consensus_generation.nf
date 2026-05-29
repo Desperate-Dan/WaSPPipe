@@ -59,14 +59,17 @@ process readMapper {
     output:
     tuple val(sample_ID), path("*.sorted.bam"), emit: mapped_reads
     tuple val(sample_ID), path("*.bai"), emit: bam_index, optional: true
-    path "*.fai", emit: ref_index
+    tuple val(sample_ID), path("*_read_counts.tsv"), emit: read_counts, optional: true
+    tuple val(sample_ID), path("*.fai"), emit: ref_index
+    tuple val(sample_ID), path(input_references), emit: ref_fasta
     path "*"
 
     script:
     // The samtools view section removes any unmapped reads from the output bam file for space efficiency.
-    // The reference indexing may not be necessary unless there is a new reference specified, could just host the index file like the reference file itself.
+    // What happens if absolutely nothing maps? Need to investigate... it breaks! (well in the topMapper step, but not here)
     """
     minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
+    bam_read_counter.py -b ${sample_ID}.sorted.bam -o ${sample_ID}_read_counts.tsv -m 1
     samtools index ${sample_ID}.sorted.bam
     samtools faidx ${input_references}
     """
@@ -77,6 +80,33 @@ process readMapper {
 // Is that more computationally efficient than run samples x N consensus instances or variant calling?
 // This may include calling variants on samples below whatever our read depth threshold will be.
 // Need to consider if two references are quite close together we might need to re map after an initial mapping to see if we mop anything else up.
+
+process topMapper {
+    // This process will take the mapped reads and their corresponding reference sequences and remap them to just the reference sequence they mapped best to in the initial mapping step. This is to try and mop up any reads that may have been missed in the initial mapping due to the presence of multiple similar reference sequences.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/${sample_ID}/top_mapping_3.1", mode: "copy"
+
+    input:
+    tuple val(sample_ID), path(trimmed_reads)
+    tuple val(sample_ID), path(read_counts)
+    tuple val(sample_ID), path(input_references)
+
+    output:
+    tuple val(sample_ID), path("*.sorted.bam"), emit: top_mapped_reads
+    tuple val(sample_ID), path("*.bai"), emit: top_bam_index, optional: true
+    tuple val(sample_ID), path("*top_hit*.fasta"), emit: top_ref_fasta, optional: true
+    tuple val(sample_ID), path("*.fai"), emit: top_ref_index
+    path "*"
+
+    script:
+    """
+    fasta_xtractor.py -f ${input_references} -b ${read_counts} -o top_hit_${sample_ID} --top_only
+    minimap2 -a --secondary=no -x map-ont top_hit_${sample_ID}*.fasta ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
+    samtools index ${sample_ID}_top_mapped.sorted.bam
+    samtools faidx top_hit_${sample_ID}*.fasta
+    """
+}
 
 process maskGen {
     // Run maskara to get depth masks for the mapped reads.
@@ -104,29 +134,29 @@ process maskGen {
 
 process variantCalling {
     // Going to try Clair3 for this...
-    // This is the latest docker container for Clair3 as of 20260304
-    // NB turns out v2.0.0 is actually bugged in some capacity where it won't find the fasta.fai no matter what I do. Using previous v1.2.0.
-    container "hkubal/clair3:v1.2.0"
+    // This is a copy of the latest docker container for Clair3 as of 20260527, with the updated models manually added in, then committed to my docker profile.
+    container "dmmalone/clair3_v2.0.1:added_models_20260527"
     publishDir "output/${sample_ID}/variant_calling_5", mode: "copy"
 
     debug false
 
-    // Need to provide the bam index and reference index; may want to add another step here to deal with that.
     input:
     tuple val(sample_ID), path(mapped_reads)
-    path input_references
+    tuple val(sample_ID), path(input_references)
     tuple val(sample_ID), path(bam_index)
-    path ref_index
-    tuple val(sample_ID), path (mask_file) // adding the mask file just to ensure we only call variants on samples we can make a ref from. NB This doesn't actually work! it gives a random maskfile... will add channel parsing to main.nf
+    tuple val(sample_ID), path(ref_index)
+    tuple val(sample_ID), path (mask_file)
+    val(clair3_model)
 
     output:
     tuple val(sample_ID), path("*_merge_output.vcf.gz"), emit: variant_file, optional: true
     path "*", optional: true
 
     script:
-    MODEL_NAME = "r1041_e82_400bps_hac_v410"
+    // The addition of \$PWD to the inputs of clair3 is vital for getting clair3 to locate the files. In general Nextflow tells docker to mount the input files with the full path to the work subfolder that the analysis is being run in.
+    //Previous versions of clair3 were able to find the files without \$PWD but the latest versions do not, presumably this is to do with the python wrapper that was introduced from v2.0.0 onwards.
     """
-    /opt/bin/run_clair3.sh --ref_fn="${input_references}" --bam_fn="${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${MODEL_NAME}" --output="." --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
+    /opt/bin/run_clair3.sh --ref_fn="\$PWD/${input_references}" --bam_fn="\$PWD/${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${clair3_model}" --output="\$PWD" --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
     if [ -f merge_output.vcf.gz ]; then mv merge_output.vcf.gz ${sample_ID}_merge_output.vcf.gz; fi
     if [ -d tmp ]; then rm -r tmp; fi
     """
@@ -140,18 +170,19 @@ process makeConsensus {
 
     input:
     tuple val(sample_ID), path(variant_file)
-    tuple val(sample_ID), path (mask_file)
-    path input_references
+    tuple val(sample_ID), path(mask_file)
+    tuple val(sample_ID), path(input_references)
 
     output:
     path "${sample_ID}*.fasta"
+    path "${sample_ID}*_combined.fasta", emit: combined_consensus
 
     script:
     // May need to add some variant parsing here or in a separate step.
     """
     bcftools index -t ${variant_file}
     bcftools consensus -f ${input_references} -m ${mask_file} -o temp.fasta ${variant_file}
-    python3 ${projectDir}/resources/scripts/fasta_xtractor.py temp.fasta ${mask_file} ${sample_ID}
+    fasta_xtractor.py -f temp.fasta -b ${mask_file} -s ${sample_ID}
     if compgen -G ${sample_ID}*.fasta; then cat ${sample_ID}*.fasta > ${sample_ID}_combined.fasta; fi
     """
 }

@@ -19,6 +19,12 @@
           "description": "Provide the path to the fastq_pass directory for your run.",
           "help_text": "This should be the the path the the fastq_pass folder, which should contain a folder for each barcode in your run. This expects your data to be demultiplexed already, you will need to do that through Minknow if it is not already demultiplexed."
         },
+        "run_ID": {
+          "type": "string",
+          "title": "Run ID",
+          "description": "Provide the Run ID for your sequencing run.",
+          "help_text": "This should match the Run ID entered into REDCap."
+        },
         "ref": {
           "type": "string",
           "format": "path",
@@ -74,18 +80,34 @@
             "description": "Number of bases to trim from the ends of the reads to remove primers (default: 30bp).",
             "help_text": "Currently WaSPP primers are not longer than 30bp, so trimming this length should remove primer sequences from downstream analysis."
         },
+        "clair3_model": {
+            "type": "string",
+            "title": "Clair3 model name",
+            "default": "r1041_e82_400bps_hac_v520",
+            "description": "The Clair3 model to use for variant calling (default: r1041_e82_400bps_hac_v520).",
+            "help_text": "This is the Clair3 model that will be used for variant calling. The default is a model trained on R10.4.1 data (r1041), with High Accuracy basecalling (hac) with version 5.2.0 of Dorado (v520), which should be suitable for most applications. You can change this to a different model if you have specific requirements. If you are unsure of which model your reads have been basecalled with, you can check the fastq headers of your reads, which should contain the model name in the format 'basecall_model_version_id=dna_r10.4.1_e8.2_400bps_hac@v5.2.0'.",
+            "enum": ["r1041_e82_400bps_hac_v520", "r1041_e82_400bps_sup_v520", "r1041_e82_400bps_hac_v500", "r1041_e82_400bps_hac_v410", "r1041_e82_400bps_sup_v410", "r1041_e82_400bps_sup_v500"]
+        },
         "parse_all": {
             "type": "boolean",
             "title": "Parse all folders in the fastq_pass folder",
             "default": false,
             "description": "By default the pipeline will only process folders in the fastq_pass directory that start with 'barcode'",
             "help_text": "but if you want to parse all folders in the fastq_pass directory (if you want to include 'Unclassified' or have folders starting with something other than 'barcode') you can tick this box. WARNING: processing the 'Unclassified' folder can significantly increase the runtime and memory usage!"
+        },
+        "top_hit_only": {
+            "type": "boolean",
+            "title": "Use only the top hit reference for each sample",
+            "default": false,
+            "description": "By default the pipeline will build a consensus sequence for each reference that has at least the 'read count' stated above mapped to it. If you want to build a consensus only for the top hit reference in each sample you can tick this box.",
+            "help_text": "This is particularly useful if your reference set contains many closely related sequences, as it can be difficult to determine which one is the best reference for a given sample. After an initial mapping step, the pipeline will check what reference has the most reads mapped to it, then will remap all reads in the sample to that reference."
         }
       },
       "allOf": [
         {
           "required": [
-            "fastq"
+            "fastq",
+            "run_ID"
           ]
         }
       ]

@@ -1,16 +1,16 @@
 #!/usr/bin/env nextflow
 
 // Get the modules we need
-include { readFilter; primerTrimming; readMapper; variantCalling; maskGen; makeConsensus } from './modules/consensus_generation.nf'
-include { aphorismGenerator } from './modules/misc_processes.nf'
+include { readFilter; primerTrimming; readMapper; topMapper; variantCalling; maskGen; makeConsensus } from './modules/consensus_generation.nf'
+include { aphorismGenerator; analysisMetadata } from './modules/misc_processes.nf'
 include { kraken2Run; kronaRun; kronaMulti } from './modules/kraken_analysis.nf'
 
 //These lines for fastq dir parsing are taken from rmcolq's workflow https://github.com/rmcolq/pantheon
 EXTENSIONS = ["fastq", "fastq.gz", "fq", "fq.gz"]
-
 ArrayList get_fq_files_in_dir(Path dir) {
     return EXTENSIONS.collect { file(dir.resolve("*.$it"), type: "file") } .flatten()
 }
+
 
 workflow aphorism_wf {
     aphoFile_ch = Channel.fromPath("${params.aphorisms}")
@@ -43,20 +43,32 @@ workflow consensus_wf {
     readFilter(inBarcode_ch, inMaxLen_ch, inMinLen_ch)
     primerTrimming(readFilter.out.len_filt_reads, inTrimLen_ch)
     readMapper(primerTrimming.out.trimmed_reads, inRefs_ch)
-    maskGen(readMapper.out.mapped_reads, readMapper.out.bam_index)
-
+    // This bit of logic can probably be simplified
+    if (params.top_hit_only) {
+        topMap_ch = primerTrimming.out.trimmed_reads.join(readMapper.out.read_counts).join(readMapper.out.ref_fasta)
+        topMapper(topMap_ch.map { [it[0], it[1]] }, topMap_ch.map { [it[0], it[2]] }, topMap_ch.map { [it[0], it[3]] })
+        maskGen(topMapper.out.top_mapped_reads, topMapper.out.top_bam_index)
+        // Join the outputs of maskGen and readMapper, keyed by barcode number
+        combined_ch = topMapper.out.top_mapped_reads.join(topMapper.out.top_ref_fasta).join(topMapper.out.top_bam_index).join(topMapper.out.top_ref_index).join(maskGen.out.mask_file)
+        variantCalling(combined_ch.map { [it[0], it[1]] }, combined_ch.map { [it[0], it[2]] }, combined_ch.map { [it[0], it[3]] }, combined_ch.map { [it[0], it[4]] }, combined_ch.map { [it[0], it[5]] }, Channel.value("${params.clair3_model}"))
+        // Join the outputs of variantCalling with mask files, keyed by barcode number
+        makeConsensus_ch = variantCalling.out.variant_file.join(maskGen.out.mask_file).join(topMapper.out.top_ref_fasta)
+        makeConsensus(makeConsensus_ch.map { [it[0], it[1]] }, makeConsensus_ch.map { [it[0], it[2]] }, makeConsensus_ch.map { [it[0], it[3]] })
+    } else {
+        maskGen(readMapper.out.mapped_reads, readMapper.out.bam_index)
+        combined_ch = readMapper.out.mapped_reads.join(readMapper.out.ref_fasta).join(readMapper.out.bam_index).join(readMapper.out.ref_index).join(maskGen.out.mask_file)
+        variantCalling(combined_ch.map { [it[0], it[1]] }, combined_ch.map { [it[0], it[2]] }, combined_ch.map { [it[0], it[3]] }, combined_ch.map { [it[0], it[4]] }, combined_ch.map { [it[0], it[5]] }, Channel.value("${params.clair3_model}"))
+        makeConsensus_ch = variantCalling.out.variant_file.join(maskGen.out.mask_file).join(readMapper.out.ref_fasta)
+        makeConsensus(makeConsensus_ch.map { [it[0], it[1]] }, makeConsensus_ch.map { [it[0], it[2]] }, makeConsensus_ch.map { [it[0], it[3]] })
+    }
+    
     hits_ch = maskGen.out.hits.collect(flat: false) {item -> [item[0], item[1] instanceof ArrayList ? item[1].collect {it -> it.toString().split("/")[-1]} : item[1].toString().split("/")[-1]]}
     misses_ch = maskGen.out.misses.collect(flat: false) {item -> [item[0], item[1].toString().split("/")[-1]]}
     hitsAndMisses_ch = hits_ch.flatMap().concat(misses_ch.flatMap())
     hitsAndMisses_ch.collectFile(name: "Ref_matches_report.csv", newLine: true, storeDir: "${launchDir}/output", sort: true) {it -> it.toString().replace("_mask.tsv","").replace("[","").replace("]","").replace(" ","")}
 
-    // Join the outputs of maskGen and readMapper, keyed by barcode number
-    combined_ch = readMapper.out.mapped_reads.join(readMapper.out.bam_index).join(maskGen.out.mask_file)
-    variantCalling(combined_ch.map { [it[0], it[1]] }, inRefs_ch, combined_ch.map { [it[0], it[2]] }, readMapper.out.ref_index, combined_ch.map { [it[0], it[3]] })
+    analysisMetadata(hitsAndMisses_ch.collect(), Channel.value("${params.run_ID}"))
     
-    // Join the outputs of variantCalling with mask files, keyed by barcode number
-    makeConsensus_ch = variantCalling.out.variant_file.join(maskGen.out.mask_file)
-    makeConsensus(makeConsensus_ch.map { [it[0], it[1]] }, makeConsensus_ch.map { [it[0], it[2]] }, inRefs_ch)
 }
 
 workflow {
