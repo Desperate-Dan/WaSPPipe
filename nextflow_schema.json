@@ -22,8 +22,8 @@
         "run_ID": {
           "type": "string",
           "title": "Run ID",
-          "description": "Provide the Run ID for your sequencing run.",
-          "help_text": "This should match the Run ID entered into REDCap."
+          "description": "Provide the Run ID for your sequencing run. This must match the Run ID entered into REDCap.",
+          "help_text": ""
         },
         "ref": {
           "type": "string",
