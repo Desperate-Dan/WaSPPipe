@@ -77,6 +77,30 @@ If you can't see anything obvious here, please get in touch with me, either thro
   <img src="docs/Output_folder.png" alt="Output folder contents" width="700" />
 </p>
 
+## Updating WaSPPipe
+As WaSPPipe is in active development, it is important to keep up to date with the latest releases of the pipeline. Thankfully this is quite straightforward in EPI2ME. You can check which version of the pipeline you are currently using from the WaSPPipe launch page. In the screenshot below you can see the version number in the red box.
+
+<p align="center">
+  <img src="docs/epi2me_pipe_version.png" alt="WaSPPipe_version_location" width="700" />
+</p>
+
+To update WaSSPipe to the latest version you can select "Options" at the top right of the WaSPPipe launch page, then select "Swtich revision" from the drop down menu (red box in the screenshot below)
+
+<p align="center">
+  <img src="docs/Switch_revision_option.png" alt="Find_switch_revision_option" width="700" />
+</p>
+
+A pop up menu will now appear with options for you to choose which revision (version) of WaSPPipe you would like to use. WaSPPipe uses semantic versioning, so all versions should be in the format vN.N.N. You should choose the highest version number, but not one that has `-dev` after it, as these ones are just for developer testing. In the screenshot below then newest version ready for general use is `v1.0.1`.
+
+<p align="center">
+  <img src="docs/Select_a_revision.png" alt="Revision_choices" width="700" />
+</p>
+
+EPI2ME will now run your chosen version of the pipeline. To ensure you are on the correct version, you can check what the new version number of the pipeline is by looking at the section highlighted with a red box from screenshot one of this section.
+
+#### Note that if you are running an early version of WaSPPipe it is possible that when you select "Switch revision" you will get a message saying no revisions are available. In this case you need to delete the WaSPPipe workflow from the pipeline launch page by selecting "Options" then "Delete workflow" (this can be seen just below the red box in screenshot two of this section), and then adding the workflow again as per the instructions in [this section of the installation guide.](https://github.com/Desperate-Dan/WaSPPipe/blob/main/README.md#add-wasppipe-workflow-to-epi2me)
+
+
 ## Command line WaSPPipe
 To run this pipeline on a BASH command line you need to have [nextflow](https://docs.seqera.io/nextflow/install) and [docker](https://docs.docker.com/engine/install/) installed on your computer. Verify the installation of these two tools by running:
 ```
@@ -87,16 +111,16 @@ docker --version
 
 Next you need to download the latest release of WaSPPipe which you will find [here](https://github.com/Desperate-Dan/WaSPPipe/releases). We recommend downloading the ```.tar.gz``` file to work with the commands below. Move the downloaded file to where you would like the files for the pipeline to be kept, and extract the folder with the following command:
 ```
-tar -xf WaSPPipe-1.0.1-dev.tar.gz
+tar -xf WaSPPipe-1.0.1.tar.gz
 ```
-#### Be sure to change the version number in the above command (1.0.1-dev in this example) to the version appropriate for your file.
+#### Be sure to change the version number in the above command (1.0.1 in this example) to the version appropriate for your file.
 WaSPPipe is now ready for use. To run the pipeline the only required input is the ```--fastq``` flag, which requires the path to the ```fastq_pass``` folder for your sequencing run. You could run the pipeline with a command such as:
 ```
-nextflow run /path/to/WaSPPipe-1.0.1-dev/main.nf --fastq /path/to/fastq_pass/
+nextflow run /path/to/WaSPPipe-1.0.1/main.nf --fastq /path/to/fastq_pass/
 ```
 You can alter any of the parameters for the pipeline on the command line by using the appropriate flag. For a description of all relevant parameters for the pipline check out the [PARAMETERS.md](PARAMETERS.md) file. For example if you wanted to alter the ```max_length``` parameter you would add the ```--max_length``` flag to the command line argument with the value you would like to change it to:
 ```
-nextflow run /path/to/WaSPPipe-1.0.1-dev/main.nf --fastq /path/to/fastq_pass/ --max_length 2000
+nextflow run /path/to/WaSPPipe-1.0.1/main.nf --fastq /path/to/fastq_pass/ --max_length 2000
 ```
 
 
