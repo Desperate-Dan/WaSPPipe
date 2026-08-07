@@ -123,9 +123,9 @@
           "format": "path",
           "title": "Kraken2 Database",
           "description": "Change the database to use for Kraken2 read assignment (deafult: Viral).",
-          "help_text": "NB VIRAL IS THE ONLY OPTION CURRENTLY AVAILABLE, BUT THIS WILL CHANGE IN THE FUTURE IF OTHER DATABASES ARE ADDED TO THE PIPELINE.",
+          "help_text": "The Viral database contains all NCBI Refseq viral sequences. The Standard database contains Refseq archaea, bacteria, viral, plasmid, human and UniVec_Core, but is downsampled to a specific size (eg 8Gb). You MUST ensure your computer has at least that amount of RAM to run that particular database. A selection of databses can be found here: https://benlangmead.github.io/aws-indexes/k2",
           "default": "Viral",
-          "enum": ["Viral","Other_ones"]
+          "enum": ["Viral","Standard-8Gb"]
         },
         "individual_krona": {
           "type": "boolean",

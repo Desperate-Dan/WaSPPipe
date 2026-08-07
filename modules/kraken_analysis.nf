@@ -3,7 +3,7 @@
 // Probably should make a custom database of the family reference viruses... Maybe add that to the preexisting viral database for extra coverage?
 // Are human reads a consideration? - not really, the 8Gb standard doesn't pick up much
 
-process kraken2Run {
+process kraken2Viral {
     container "${params.viral_db}@${params.viral_db_sha}"
     publishDir "output/${sample_ID}/kraken2_krona_plots", mode: 'copy'
 
@@ -12,7 +12,7 @@ process kraken2Run {
     input:
     // Plan to run on raw input reads, but may need to consider trimming beforehand.
     tuple val(sample_ID), path(sample_ID_files)
-
+    
     output:
     tuple val(sample_ID), path("*_report.txt"), emit: report
     path("*_report.txt"), emit: reports
@@ -21,6 +21,27 @@ process kraken2Run {
     script:
     """
     kraken2 --db /tmp/viral_standard_20260330/ --output ${sample_ID}_vsd_ouput.txt --report ${sample_ID}_vsd_report.txt ${sample_ID_files}
+    """
+}
+
+process kraken2Standard8Gb {
+    container "${params.Standard8Gb_db}@${params.Standard8Gb_db_sha}"
+    publishDir "output/${sample_ID}/kraken2_krona_plots", mode: 'copy'
+
+    debug false
+
+    input:
+    // Plan to run on raw input reads, but may need to consider trimming beforehand.
+    tuple val(sample_ID), path(sample_ID_files)
+    
+    output:
+    tuple val(sample_ID), path("*_report.txt"), emit: report
+    path("*_report.txt"), emit: reports
+    path "*"
+
+    script:
+    """
+    kraken2 --db /tmp/Standard_8Gb_20260807/ --output ${sample_ID}_vsd_ouput.txt --report ${sample_ID}_vsd_report.txt ${sample_ID_files}
     """
 }
 
