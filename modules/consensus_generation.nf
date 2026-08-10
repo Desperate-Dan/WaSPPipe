@@ -67,6 +67,7 @@ process readMapper {
     script:
     // The samtools view section removes any unmapped reads from the output bam file for space efficiency.
     // What happens if absolutely nothing maps? Need to investigate... it breaks! (well in the topMapper step, but not here)
+    if (params.unmapped_output) {}
     """
     minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
     bam_read_counter.py -b ${sample_ID}.sorted.bam -o ${sample_ID}_read_counts.tsv -m 1
@@ -105,6 +106,51 @@ process topMapper {
     minimap2 -a --secondary=no -x map-ont top_hit_${sample_ID}*.fasta ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
     samtools index ${sample_ID}_top_mapped.sorted.bam
     samtools faidx top_hit_${sample_ID}*.fasta
+    """
+}
+
+process refFinder {
+    // This process will take the read_counts produced by bam_read_counter and extract the relevant reference sequences. The plan is use this to flatten the output for separate downstream processing.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/${sample_ID}/repeat_mapping_3.1", mode: "copy"
+
+    input:
+    tuple val(sample_ID), path(read_counts)
+    tuple val(sample_ID), path(input_references)
+
+    output:
+    tuple val(sample_ID), path("*_ref*.fasta"), emit: repeat_ref_fasta, optional: true
+    
+    script:
+    """
+    fasta_xtractor.py -f ${input_references} -b ${read_counts} -s ${sample_ID}_ref
+    """ 
+}
+
+process repeatMapper {
+    // This process will take the mapped reads and their corresponding reference sequences and remap them to just the reference sequence they mapped best to in the initial mapping step. This is to try and mop up any reads that may have been missed in the initial mapping due to the presence of multiple similar reference sequences.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/${sample_ID}/top_mapping_3.1", mode: "copy"
+
+    input:
+    tuple val(sample_ID), path(new_reference)
+    tuple val(sample_ID), path(trimmed_reads)
+
+    output:
+    tuple val(sample_ref), path("*.sorted.bam"), emit: repeat_mapped_reads
+    tuple val(sample_ref), path("*.bai"), emit: repeat_bam_index, optional: true
+    tuple val(sample_ref), path(new_reference), emit: repeat_ref_fasta, optional: true
+    tuple val(sample_ref), path("*.fai"), emit: repeat_ref_index
+    path "*"
+
+    script:
+    sample_ref = new_reference.baseName
+    """
+    minimap2 -a --secondary=no -x map-ont ${new_reference} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ref}.sorted.bam -
+    samtools index ${sample_ref}.sorted.bam
+    samtools faidx ${sample_ref}.fasta
     """
 }
 
