@@ -101,6 +101,13 @@
             "default": false,
             "description": "By default the pipeline will build a consensus sequence for each reference that has at least the 'read count' stated above mapped to it. If you want to build a consensus only for the top hit reference in each sample you can tick this box.",
             "help_text": "This is particularly useful if your reference set contains many closely related sequences, as it can be difficult to determine which one is the best reference for a given sample. After an initial mapping step, the pipeline will check what reference has the most reads mapped to it, then will remap all reads in the sample to that reference."
+        },
+        "remap_all": {
+            "type": "boolean",
+            "title": "Remap all reads in a sample against each reference with at least one read mapped to it",
+            "default": false,
+            "description": "Selecting this will remap your reads against every reference with at least one read mapped to it in an initial mapping step using only that reference. This in theory will allow any reads that may map to a similar but divergent references to map to this particular reference. A consensus sequence is then generated for each reference where at least 'Read Count' reads have mapped.",
+            "help_text": "Warning - this can option can make the pipeline significantly slower if there are many more sequences to call vairants on. Note - that this cannont be used with 'top hit' mode above, and if both are selected only 'top hit' mode will run."
         }
       },
       "allOf": [

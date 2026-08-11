@@ -62,6 +62,7 @@ process readMapper {
     tuple val(sample_ID), path("*_read_counts.tsv"), emit: read_counts, optional: true
     tuple val(sample_ID), path("*.fai"), emit: ref_index
     tuple val(sample_ID), path(input_references), emit: ref_fasta
+    tuple val(sample_ID), val(sample_ID), emit: original_sample_ID
     path "*"
 
     script:
@@ -98,6 +99,7 @@ process topMapper {
     tuple val(sample_ID), path("*.bai"), emit: top_bam_index, optional: true
     tuple val(sample_ID), path("*top_hit*.fasta"), emit: top_ref_fasta, optional: true
     tuple val(sample_ID), path("*.fai"), emit: top_ref_index
+    tuple val(sample_ID), val(sample_ID), emit: original_sample_ID
     path "*"
 
     script:
@@ -132,7 +134,7 @@ process repeatMapper {
     // This process will take the mapped reads and their corresponding reference sequences and remap them to just the reference sequence they mapped best to in the initial mapping step. This is to try and mop up any reads that may have been missed in the initial mapping due to the presence of multiple similar reference sequences.
     container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe"
-    publishDir "output/${sample_ID}/top_mapping_3.1", mode: "copy"
+    publishDir "output/${sample_ID}/repeat_mapping_3.1", mode: "copy"
 
     input:
     tuple val(sample_ID), path(new_reference)
@@ -143,6 +145,7 @@ process repeatMapper {
     tuple val(sample_ref), path("*.bai"), emit: repeat_bam_index, optional: true
     tuple val(sample_ref), path(new_reference), emit: repeat_ref_fasta, optional: true
     tuple val(sample_ref), path("*.fai"), emit: repeat_ref_index
+    tuple val(sample_ref), val(sample_ID), emit: original_sample_ID
     path "*"
 
     script:
@@ -161,20 +164,21 @@ process maskGen {
     publishDir "output/${sample_ID}/mask_generation_4", mode: "copy"
 
     input:
-    tuple val(sample_ID), path(mapped_reads)
-    tuple val(sample_ID), path(bam_index)
+    tuple val(sample_ref), path(mapped_reads)
+    tuple val(sample_ref), path(bam_index)
+    tuple val(sample_ref), val(sample_ID)
 
     output:
-    tuple val(sample_ID), path("*_combined_masks.tsv"), emit: mask_file, optional: true
+    tuple val(sample_ref), path("*_combined_masks.tsv"), emit: mask_file, optional: true
 
-    tuple val(sample_ID), path("*_mask.tsv"), emit: hits, optional: true
-    tuple val(sample_ID), path("NO_REF*"), emit: misses, optional: true
+    tuple val(sample_ref), path("*_mask.tsv"), emit: hits, optional: true
+    tuple val(sample_ref), path("NO_REF*"), emit: misses, optional: true
 
     script:
     // The use of compgen bothers me a bit (can't use [] as it doesn't support glob), but as long as it's run on BASH it should be okay.
     """
     maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads}
-    if compgen -G *_mask.tsv; then cat *_mask.tsv > ${sample_ID}_combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
+    if compgen -G *_mask.tsv; then cat *_mask.tsv > ${sample_ref}_combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
     """
 }
 
@@ -187,15 +191,16 @@ process variantCalling {
     debug false
 
     input:
-    tuple val(sample_ID), path(mapped_reads)
-    tuple val(sample_ID), path(input_references)
-    tuple val(sample_ID), path(bam_index)
-    tuple val(sample_ID), path(ref_index)
-    tuple val(sample_ID), path (mask_file)
+    tuple val(sample_ref), path(mapped_reads)
+    tuple val(sample_ref), path(input_references)
+    tuple val(sample_ref), path(bam_index)
+    tuple val(sample_ref), path(ref_index)
+    tuple val(sample_ref), path (mask_file)
+    tuple val(sample_ref), val(sample_ID)
     val(clair3_model)
 
     output:
-    tuple val(sample_ID), path("*_merge_output.vcf.gz"), emit: variant_file, optional: true
+    tuple val(sample_ref), path("*_merge_output.vcf.gz"), emit: variant_file, optional: true
     path "*", optional: true
 
     script:
@@ -203,7 +208,7 @@ process variantCalling {
     // Previous versions of clair3 were able to find the files without \$PWD but the latest versions do not, presumably this is to do with the python wrapper that was introduced from v2.0.0 onwards.
     """
     /opt/bin/run_clair3.sh --ref_fn="\$PWD/${input_references}" --bam_fn="\$PWD/${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${clair3_model}" --output="\$PWD" --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
-    if [ -f merge_output.vcf.gz ]; then mv merge_output.vcf.gz ${sample_ID}_merge_output.vcf.gz; fi
+    if [ -f merge_output.vcf.gz ]; then mv merge_output.vcf.gz ${sample_ref}_merge_output.vcf.gz; fi
     if [ -d tmp ]; then rm -r tmp; fi
     """
 }
@@ -215,13 +220,13 @@ process makeConsensus {
     publishDir "output/${sample_ID}/consensus_generation_6", mode: "copy"
 
     input:
-    tuple val(sample_ID), path(variant_file)
-    tuple val(sample_ID), path(mask_file)
-    tuple val(sample_ID), path(input_references)
+    tuple val(sample_ref), path(variant_file)
+    tuple val(sample_ref), path(mask_file)
+    tuple val(sample_ref), path(input_references)
+    tuple val(sample_ref), val(sample_ID)
 
     output:
-    path "${sample_ID}*.fasta"
-    path "${sample_ID}*_combined.fasta", emit: combined_consensus
+    tuple val(sample_ID), path("${sample_ID}*fasta"), emit: consensus_fasta
 
     script:
     // May need to add some variant parsing here or in a separate step.
@@ -229,6 +234,23 @@ process makeConsensus {
     bcftools index -t ${variant_file}
     bcftools consensus -f ${input_references} -m ${mask_file} -o temp.fasta ${variant_file}
     fasta_xtractor.py -f temp.fasta -b ${mask_file} -s ${sample_ID}
-    if compgen -G ${sample_ID}*.fasta; then cat ${sample_ID}*.fasta > ${sample_ID}_combined.fasta; fi
+    """
+}
+
+process consensusCat {
+    // Make a combined consensus file from individual consensus files for each sample ID.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/${sample_ID}/consensus_generation_6", mode: "copy"
+
+    input:
+    tuple val(sample_ID), path(consensus_seqs)
+
+    output:
+    path("${sample_ID}_combined.fasta")
+
+    script:
+    """
+    cat ${consensus_seqs} > ${sample_ID}_combined.fasta
     """
 }
