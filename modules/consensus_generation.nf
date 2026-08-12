@@ -68,9 +68,14 @@ process readMapper {
     script:
     // The samtools view section removes any unmapped reads from the output bam file for space efficiency.
     // What happens if absolutely nothing maps? Need to investigate... it breaks! (well in the topMapper step, but not here)
-    if (params.unmapped_output) {}
+    mapping_cmd = ""
+    if (params.unmapped_out) {
+        mapping_cmd = "minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -o ${sample_ID}.all.bam - ; samtools view -b -F 4 ${sample_ID}.all.bam | samtools sort -o ${sample_ID}.sorted.bam - ; samtools view -b -f 4 -o ${sample_ID}.unmapped.bam ${sample_ID}.all.bam"
+    } else {
+        mapping_cmd = "minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -"
+    }
     """
-    minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
+    ${mapping_cmd}
     bam_read_counter.py -b ${sample_ID}.sorted.bam -o ${sample_ID}_read_counts.tsv -m 1
     samtools index ${sample_ID}.sorted.bam
     samtools faidx ${input_references}

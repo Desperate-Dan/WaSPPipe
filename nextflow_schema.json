@@ -108,6 +108,13 @@
             "default": false,
             "description": "Selecting this will remap your reads against every reference with at least one read mapped to it in an initial mapping step using only that reference. This in theory will allow any reads that may map to a similar but divergent references to map to this particular reference. A consensus sequence is then generated for each reference where at least 'Read Count' reads have mapped.",
             "help_text": "Warning - this can option can make the pipeline significantly slower if there are many more sequences to call vairants on. Note - that this cannont be used with 'top hit' mode above, and if both are selected only 'top hit' mode will run."
+        },
+        "unmapped_out": {
+            "type": "boolean",
+            "title": "Output unmapped reads",
+            "default": false,
+            "description": "If selected, the pipeline will output unmapped reads in a separate file.",
+            "help_text": "The unmapped reads will be output in the read_mapping_3 output directory. The unmapped reads will only be generated after the first mapping step regardless of other mapping options selected above."
         }
       },
       "allOf": [
