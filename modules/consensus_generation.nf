@@ -15,12 +15,18 @@ process readFilter {
 
     output:
     tuple val(sample_ID), path("*filtered.fastq.gz"), emit: len_filt_reads, optional: true
+    tuple val(sample_ID), path("*_filtered_read_counts.csv"), emit: filtered_read_counts, optional: true
+    tuple val(sample_ID), path("*_unfiltered_read_counts.csv"), emit: unfiltered_read_counts, optional: true
     path "*"
 
     script:
-    // Vaguely concerned that this is a hacky way to get chopper to take in multiple files, need to think on this.
+    // If no reads pass the filter, the filtered.fastq.gz file will be empty and fastq_read_counter will return 0 reads. This is fine, but we need to make sure that the downstream processes can handle this case.
+    // If no reads pass the filter, the pipeline continues happily until and stops at the mask generation step with an output of NO_REF_WITH_MORE_THAN_${params.read_count}_READS.
+    // In the alternate mapping modes, the pipeline finishes after the first read mapping step as no _read_counts.tsv file is produced. 
     """
+    zcat ${sample_ID_files} | fastq_read_counter.py -s ${sample_ID} -c "unfiltered" - > ${sample_ID}_unfiltered_read_counts.csv 
     zcat ${sample_ID_files} | chopper --minlength ${min_length} --maxlength ${max_length} | pigz > ${sample_ID}_filtered.fastq.gz
+    zcat ${sample_ID}_filtered.fastq.gz | fastq_read_counter.py -s ${sample_ID} -c "filtered" - > ${sample_ID}_filtered_read_counts.csv
     """
 }
 
@@ -71,7 +77,11 @@ process readMapper {
     // The unmapped reads lose their header information.
     mapping_cmd = ""
     if (params.unmapped_out) {
-        mapping_cmd = "minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -o ${sample_ID}.all.bam - ; samtools view -b -F 4 ${sample_ID}.all.bam | samtools sort -o ${sample_ID}.sorted.bam - ; samtools view -b -f 4 ${sample_ID}.all.bam | samtools fastq -0 ${sample_ID}.unmapped.fastq.gz -"
+        mapping_cmd = """
+            minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -o ${sample_ID}.all.bam - 
+            samtools view -b -F 4 ${sample_ID}.all.bam | samtools sort -o ${sample_ID}.sorted.bam - 
+            samtools view -b -f 4 ${sample_ID}.all.bam | samtools fastq -0 ${sample_ID}.unmapped.fastq.gz -
+        """
     } else {
         mapping_cmd = "minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -"
     }
