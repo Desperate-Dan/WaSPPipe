@@ -54,6 +54,7 @@ workflow consensus_wf {
     readFilter(inBarcode_ch, inMaxLen_ch, inMinLen_ch)
     primerTrimming(readFilter.out.len_filt_reads, inTrimLen_ch)
     readMapper(primerTrimming.out.trimmed_reads, inRefs_ch)
+    readCounts_ch = readMapper.out.read_counts.join(readFilter.out.filtered_read_counts).join(readFilter.out.unfiltered_read_counts)
     // Variant pipeline remains consistent between each of the mapping modes, but the input channels will change depending on the mode selected.
     def run_variant_pipeline = { mapped_reads_ch, ref_fasta_ch, bam_index_ch, ref_index_ch, sample_id_ch ->
         maskGen(mapped_reads_ch, bam_index_ch, sample_id_ch)
@@ -87,6 +88,8 @@ workflow consensus_wf {
             topMapper.out.top_ref_index,
             topMapper.out.original_sample_ID
         )
+        readCounts_ch = readCounts_ch.join(topMapper.out.top_read_counts)
+
     } else if (params.remap_all) {
         refFinder_ch = readMapper.out.read_counts.join(readMapper.out.ref_fasta)
         refFinder(refFinder_ch.map { [it[0], it[1]] }, refFinder_ch.map { [it[0], it[2]] })
@@ -100,6 +103,11 @@ workflow consensus_wf {
             repeatMapper.out.repeat_ref_index,
             repeatMapper.out.original_sample_ID
         )
+        repeatCounts_ch = repeatMapper.out.repeat_read_counts.groupTuple(by: 0).map { sample_ID, counts_files -> tuple(sample_ID, counts_files) }
+        //repeatCounts_ch.view()
+        readCounts_ch = readCounts_ch.join(repeatCounts_ch)
+        readCounts_ch.view() 
+        
         consensus_ch = consensus_ch.groupTuple(by: 0).map { sample_ID, fasta_files -> tuple(sample_ID, fasta_files.collect { it.toString() }) }
         consensusCat(consensus_ch.map { [it[0], it[1]] })
     } else {

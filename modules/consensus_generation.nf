@@ -22,7 +22,8 @@ process readFilter {
     script:
     // If no reads pass the filter, the filtered.fastq.gz file will be empty and fastq_read_counter will return 0 reads. This is fine, but we need to make sure that the downstream processes can handle this case.
     // If no reads pass the filter, the pipeline continues happily until and stops at the mask generation step with an output of NO_REF_WITH_MORE_THAN_${params.read_count}_READS.
-    // In the alternate mapping modes, the pipeline finishes after the first read mapping step as no _read_counts.tsv file is produced. 
+    // In the alternate mapping modes, the pipeline finishes after the first read mapping step as no *_read_counts.tsv file is produced. The pipeline does not break though.
+    // In future if we want to pass things downstream of read mapper, we could consider .ifEmpty('something') on the channel. Or make bam_read_counter.py output a token if no reads.
     """
     zcat ${sample_ID_files} | fastq_read_counter.py -s ${sample_ID} -c "unfiltered" - > ${sample_ID}_unfiltered_read_counts.csv 
     zcat ${sample_ID_files} | chopper --minlength ${min_length} --maxlength ${max_length} | pigz > ${sample_ID}_filtered.fastq.gz
@@ -116,12 +117,14 @@ process topMapper {
     tuple val(sample_ID), path("*top_hit*.fasta"), emit: top_ref_fasta, optional: true
     tuple val(sample_ID), path("*.fai"), emit: top_ref_index
     tuple val(sample_ID), val(sample_ID), emit: original_sample_ID
+    tuple val(sample_ID), path("*_top_map_read_counts.tsv"), emit: top_read_counts, optional: true
     path "*"
 
     script:
     """
     fasta_xtractor.py -f ${input_references} -b ${read_counts} -o top_hit_${sample_ID} --top_only
     minimap2 -a --secondary=no -x map-ont top_hit_${sample_ID}*.fasta ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
+    bam_read_counter.py -b ${sample_ID}_top_mapped.sorted.bam -o ${sample_ID}_top_map_read_counts.tsv -m 1
     samtools index ${sample_ID}_top_mapped.sorted.bam
     samtools faidx top_hit_${sample_ID}*.fasta
     """
@@ -162,12 +165,14 @@ process repeatMapper {
     tuple val(sample_ref), path(new_reference), emit: repeat_ref_fasta, optional: true
     tuple val(sample_ref), path("*.fai"), emit: repeat_ref_index
     tuple val(sample_ref), val(sample_ID), emit: original_sample_ID
+    tuple val(sample_ID), path("*_repeat_map_read_counts.tsv"), emit: repeat_read_counts, optional: true
     path "*"
 
     script:
     sample_ref = new_reference.baseName
     """
     minimap2 -a --secondary=no -x map-ont ${new_reference} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ref}.sorted.bam -
+    bam_read_counter.py -b ${sample_ref}.sorted.bam -o ${sample_ref}_repeat_map_read_counts.tsv -m 1
     samtools index ${sample_ref}.sorted.bam
     samtools faidx ${sample_ref}.fasta
     """
