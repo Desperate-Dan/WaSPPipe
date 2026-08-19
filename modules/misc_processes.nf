@@ -39,3 +39,21 @@ process analysisMetadata {
     echo "Timestamp,${TIME}" >> Analysis_metadata.csv
     """
 }
+
+process sampleMetadata {
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output", mode: "copy"
+
+    debug true
+
+    input:
+    tuple val(sample_ID), val(read_count_files)
+
+    output:
+    stdout
+
+    script:
+    """
+    metadata_assembler.py -r "${read_count_files}"
+    """
+}

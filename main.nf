@@ -2,7 +2,7 @@
 
 // Get the modules we need
 include { readFilter; primerTrimming; readMapper; topMapper; refFinder; repeatMapper; variantCalling; maskGen; makeConsensus; consensusCat } from './modules/consensus_generation.nf'
-include { aphorismGenerator; analysisMetadata } from './modules/misc_processes.nf'
+include { aphorismGenerator; analysisMetadata; sampleMetadata } from './modules/misc_processes.nf'
 include { kraken2Viral; kraken2Standard8Gb; kronaRun; kronaMulti } from './modules/kraken_analysis.nf'
 
 //These lines for fastq dir parsing are taken from rmcolq's workflow https://github.com/rmcolq/pantheon
@@ -103,11 +103,12 @@ workflow consensus_wf {
             repeatMapper.out.repeat_ref_index,
             repeatMapper.out.original_sample_ID
         )
-        repeatCounts_ch = repeatMapper.out.repeat_read_counts.groupTuple(by: 0).map { sample_ID, counts_files -> tuple(sample_ID, counts_files) }
-        //repeatCounts_ch.view()
-        readCounts_ch = readCounts_ch.join(repeatCounts_ch)
-        readCounts_ch.view() 
-        
+        repeatCounts_ch = repeatMapper.out.repeat_read_counts.groupTuple(by: 0).map { sample_ID, counts_files -> tuple(sample_ID, counts_files.collect { it.toString() }) }
+        readCounts_ch = readCounts_ch.join(repeatCounts_ch).map { joined_counts ->
+            tuple(joined_counts[0], joined_counts[1..-1].flatten())
+        }
+
+
         consensus_ch = consensus_ch.groupTuple(by: 0).map { sample_ID, fasta_files -> tuple(sample_ID, fasta_files.collect { it.toString() }) }
         consensusCat(consensus_ch.map { [it[0], it[1]] })
     } else {
@@ -127,7 +128,7 @@ workflow consensus_wf {
     hitsAndMisses_ch.collectFile(name: "Ref_matches_report.csv", newLine: true, storeDir: "${launchDir}/output", sort: true) {it -> it.toString().replace("_mask.tsv","").replace("[","").replace("]","").replace(" ","")}
 
     analysisMetadata(hitsAndMisses_ch.collect(), Channel.value("${params.run_ID}"))
-    
+    sampleMetadata(readCounts_ch)
 }
 
 workflow {
