@@ -42,7 +42,7 @@ process analysisMetadata {
 
 process sampleMetadata {
     conda "${HOME}/miniconda3/envs/WaSPPipe"
-    publishDir "output", mode: "copy"
+    publishDir "output/${sample_ID}/", mode: "copy"
 
     debug true
 
@@ -52,6 +52,7 @@ process sampleMetadata {
     tuple val(sample_ID), val(consensus_seqs)
 
     output:
+    path ("*_sample_metadata.csv")
     stdout
 
     script:
