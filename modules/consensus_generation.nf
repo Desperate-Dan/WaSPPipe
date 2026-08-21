@@ -151,6 +151,8 @@ process refFinder {
 
 process repeatMapper {
     // This process will take the mapped reads and their corresponding reference sequences and remap them to just the reference sequence they mapped best to in the initial mapping step. This is to try and mop up any reads that may have been missed in the initial mapping due to the presence of multiple similar reference sequences.
+    // I've noticed something interesting when remapping. Somethimes the read count can actually go down after remapping. This appears to be due to how minimap2 handles large reference files. If the reference is above 4Gb in length, minimap2 will split the reference into chunks. It is unclear to me if that is the case when it is multiple smaller sequences that combined are over 4Gb in length.
+    // When the reference is chunked it can result in some differences in quality score. This I believe is the reason why there are some reads that get mapped initially but then do not make it through the second round. Will have to keep an eye on this to see if it is an edge case or routine. 
     container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe"
     publishDir "output/${sample_ID}/repeat_mapping_3.1", mode: "copy"

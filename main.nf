@@ -88,7 +88,9 @@ workflow consensus_wf {
             topMapper.out.top_ref_index,
             topMapper.out.original_sample_ID
         )
-        readCounts_ch = readCounts_ch.join(topMapper.out.top_read_counts)
+        readCounts_ch = readCounts_ch.join(topMapper.out.top_read_counts).map { joined_counts ->
+            tuple(joined_counts[0], joined_counts[1..-1].flatten())
+        }
 
     } else if (params.remap_all) {
         refFinder_ch = readMapper.out.read_counts.join(readMapper.out.ref_fasta)
@@ -120,6 +122,9 @@ workflow consensus_wf {
             readMapper.out.original_sample_ID
         )
         consensusCat(consensus_ch.map { [it[0], it[1]] })
+        readCounts_ch = readCounts_ch.map { read_counts ->
+            tuple(read_counts[0], read_counts[1..-1].flatten())
+        }
     }
     
     hits_ch = maskGen.out.hits.collect(flat: false) {item -> [item[0], item[1] instanceof ArrayList ? item[1].collect {it -> it.toString().split("/")[-1]} : item[1].toString().split("/")[-1]]}
@@ -128,7 +133,8 @@ workflow consensus_wf {
     hitsAndMisses_ch.collectFile(name: "Ref_matches_report.csv", newLine: true, storeDir: "${launchDir}/output", sort: true) {it -> it.toString().replace("_mask.tsv","").replace("[","").replace("]","").replace(" ","")}
 
     analysisMetadata(hitsAndMisses_ch.collect(), Channel.value("${params.run_ID}"))
-    sampleMetadata(readCounts_ch)
+    metadata_ch = readCounts_ch.join(consensus_ch)
+    sampleMetadata(metadata_ch.map { [it[0], it[1]] }, inRefs_ch, metadata_ch.map { [it[0], it[2]] })
 }
 
 workflow {

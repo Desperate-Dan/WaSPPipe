@@ -48,12 +48,14 @@ process sampleMetadata {
 
     input:
     tuple val(sample_ID), val(read_count_files)
+    path input_references
+    tuple val(sample_ID), val(consensus_seqs)
 
     output:
     stdout
 
     script:
     """
-    metadata_assembler.py -r "${read_count_files}"
+    metadata_assembler.py --reference_file ${input_references} --consensus_seqs "${consensus_seqs}" -r "${read_count_files}"
     """
 }
