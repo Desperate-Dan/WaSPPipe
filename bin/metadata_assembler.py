@@ -26,6 +26,7 @@ def name_getter(reference_file):
     return name_dict
 
 def consensus_handler(consensus_seqs):
+    # This extracts the accession of the reference from any consensus sequences that have been generated. 
     consensus_refs = []
     for i in consensus_seqs.lstrip("[").rstrip("]").split(", "):
         file_name = i.split("/")[-1]
@@ -38,8 +39,33 @@ def consensus_handler(consensus_seqs):
 
     return consensus_refs
 
+def read_fasta(reference_file):
+    # Read a FASTA file and return a dictionary of sequences.
+    # Function adapted from fasta_xtractor.py
+    sequences = {}
+    current_id = None
+    current_seq = []
+    
+    with open(reference_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('>'):
+                if current_id:
+                    sequences[current_id] = ''.join(current_seq) 
+                current_id = line[1:].split()[0]  # Get ID without '>'
+                current_seq = []
+            else:
+                current_seq.append(line)
+        
+        if current_id:
+            sequences[current_id] = ''.join(current_seq)
 
-def read_files(read_counts,name_dict,consensus_refs):
+    return sequences
+
+def sequence_comparison(reference_seqs,consensus_seqs,consensus_masks):
+    print("This is a placeholder")
+
+def read_files(read_counts,name_dict,consensus_refs,sequences):
     for i in read_counts.lstrip("[").rstrip("]").split(", "):
         file_name = i.split("/")[-1]
         sample_ID = i.split("/")[-1].split("_")[0]
@@ -140,4 +166,7 @@ Examples:
     args = parser.parse_args()
     name_dict = name_getter(args.reference_file)
     consensus_refs = consensus_handler(args.consensus_seqs)
-    read_files(args.read_counts, name_dict, consensus_refs)
+    sequences = read_fasta(args.reference_file)
+
+    read_files(args.read_counts, name_dict, consensus_refs, sequences)
+    
