@@ -52,11 +52,31 @@ process sampleMetadata {
     tuple val(sample_ID), val(consensus_seqs)
 
     output:
-    path ("*_sample_metadata.csv")
+    path ("*_sample_metadata.csv"), emit: sample_metadata
     stdout
 
     script:
     """
     metadata_assembler.py --reference_file ${input_references} --consensus_seqs "${consensus_seqs}" -r "${read_count_files}"
     """
+}
+
+process metadataCombine {
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/", mode: "copy"
+
+    debug true
+
+    input:
+    path sample_metadata_files
+    val run_ID
+
+    output:
+    path ("*run_metadata.csv")
+
+    script:
+    """
+    metadata_combiner.py --metadata_files "${sample_metadata_files}" --run_id ${run_ID}
+    """
+
 }

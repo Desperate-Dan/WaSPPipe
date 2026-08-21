@@ -2,7 +2,7 @@
 
 // Get the modules we need
 include { readFilter; primerTrimming; readMapper; topMapper; refFinder; repeatMapper; variantCalling; maskGen; makeConsensus; consensusCat } from './modules/consensus_generation.nf'
-include { aphorismGenerator; analysisMetadata; sampleMetadata } from './modules/misc_processes.nf'
+include { aphorismGenerator; analysisMetadata; sampleMetadata; metadataCombine } from './modules/misc_processes.nf'
 include { kraken2Viral; kraken2Standard8Gb; kronaRun; kronaMulti } from './modules/kraken_analysis.nf'
 
 //These lines for fastq dir parsing are taken from rmcolq's workflow https://github.com/rmcolq/pantheon
@@ -135,6 +135,7 @@ workflow consensus_wf {
     analysisMetadata(hitsAndMisses_ch.collect(), Channel.value("${params.run_ID}"))
     metadata_ch = readCounts_ch.join(consensus_ch)
     sampleMetadata(metadata_ch.map { [it[0], it[1]] }, inRefs_ch, metadata_ch.map { [it[0], it[2]] })
+    metadataCombine(sampleMetadata.out.sample_metadata.collect(), Channel.value("${params.run_ID}"))
 }
 
 workflow {
