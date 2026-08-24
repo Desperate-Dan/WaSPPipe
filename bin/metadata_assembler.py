@@ -25,24 +25,36 @@ def name_getter(reference_file):
             name_dict[accession] = header
     return name_dict
 
-def consensus_handler(consensus_seqs):
+def consensus_handler(consensus_files):
     # This extracts the accession of the reference from any consensus sequences that have been generated. 
     consensus_refs = []
-    for i in consensus_seqs.lstrip("[").rstrip("]").split(", "):
+    consensus_sequences = {}
+    current_id = None
+    current_seq = []
+    for i in consensus_files.lstrip("[").rstrip("]").split(", "):
         file_name = i.split("/")[-1]
-        consensus_refs.append(file_name.lstrip('barcode0123456789').lstrip('_').split(".fasta")[0])
+        ref_name = file_name.lstrip('barcode0123456789').lstrip('_').split(".fasta")[0]
+        consensus_refs.append(ref_name)
 
-        with open(i,"r") as file:
-            for line in file:
-                if line.startswith(">"):
-                    print(line)
-
-    return consensus_refs
+        with open(i, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('>'):
+                    if current_id:
+                        consensus_sequences[current_id] = ''.join(current_seq) 
+                    current_id = ref_name
+                    current_seq = []
+                else:
+                    current_seq.append(line)
+            if current_id:
+                consensus_sequences[current_id] = ''.join(current_seq)
+            
+    return consensus_refs,consensus_sequences
 
 def read_fasta(reference_file):
     # Read a FASTA file and return a dictionary of sequences.
     # Function adapted from fasta_xtractor.py
-    sequences = {}
+    ref_sequences = {}
     current_id = None
     current_seq = []
     
@@ -51,21 +63,39 @@ def read_fasta(reference_file):
             line = line.strip()
             if line.startswith('>'):
                 if current_id:
-                    sequences[current_id] = ''.join(current_seq) 
+                    ref_sequences[current_id] = ''.join(current_seq) 
                 current_id = line[1:].split()[0]  # Get ID without '>'
                 current_seq = []
             else:
                 current_seq.append(line)
         
         if current_id:
-            sequences[current_id] = ''.join(current_seq)
+            ref_sequences[current_id] = ''.join(current_seq)
 
-    return sequences
+    return ref_sequences
 
-def sequence_comparison(reference_seqs,consensus_seqs,consensus_masks):
-    print("This is a placeholder")
+def sequence_comparison(reference_seqs,consensus_seqs):
+    # Originally thought I'd need to have access to the masks to run this but I don't think that is necessary.
+    # Plan is to iterate through the consensus seq, find bases that are not 'N', get their index, check what base is at that index in the ref seek, keep a count of matches.
+    seq_comparison_dict = {}
+    for consensus_accession,consensus_seq in consensus_seqs.items():
+        covered_base_counter = 0
+        matching_positions = 0
+        for position, base in enumerate(consensus_seq):
+            if base == "N":
+                continue
+            else:
+                covered_base_counter += 1
+                if reference_seqs[consensus_accession][position] == base:
+                    matching_positions += 1
+        print(f"{consensus_accession} has {covered_base_counter} non-N bases and {matching_positions} similarities.")
+        comp_tuple = (covered_base_counter,matching_positions)
+        seq_comparison_dict[consensus_accession] = comp_tuple
 
-def read_files(read_counts,name_dict,consensus_refs,sequences):
+    return seq_comparison_dict
+
+
+def read_files(read_counts,name_dict,consensus_refs,comparison_dict):
     for i in read_counts.lstrip("[").rstrip("]").split(", "):
         file_name = i.split("/")[-1]
         sample_ID = i.split("/")[-1].split("_")[0]
@@ -115,6 +145,7 @@ def read_files(read_counts,name_dict,consensus_refs,sequences):
     species_names = []
     ncbi_links = []
     consensus_generated = []
+    estimated_similarity = []
 
     for ref in combined_df.reference:
         species_names.append(name_dict[ref])
@@ -123,10 +154,16 @@ def read_files(read_counts,name_dict,consensus_refs,sequences):
             consensus_generated.append("Yes")
         else:
             consensus_generated.append("No")
+        try:
+            estimated_similarity.append(comparison_dict[ref][1]/comparison_dict[ref][0])
+        except:
+            estimated_similarity.append("NA")
 
     combined_df['species'] = species_names
     combined_df['ncbi_link'] = ncbi_links
     combined_df['consensus_generated'] = consensus_generated
+    combined_df['estimated_similarity'] = estimated_similarity
+
 
     combined_df = combined_df.fillna(0)
     print(f"\n\n{combined_df}")
@@ -143,7 +180,7 @@ if __name__ == '__main__':
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s --reference_file references.fasta --consensus_seqs  "consensus_seq [...]" -r "read_counts.csv [...]"
+  %(prog)s --reference_file references.fasta --consensus_files  "consensus_seq [...]" -r "read_counts.csv [...]"
         """
     )
     
@@ -158,15 +195,16 @@ Examples:
             help="Path to input reference file"
         )
     parser.add_argument(
-            "--consensus_seqs",
+            "--consensus_files",
             required=True,
             help="List of paths to generated consensus sequences files"
         )
     
     args = parser.parse_args()
     name_dict = name_getter(args.reference_file)
-    consensus_refs = consensus_handler(args.consensus_seqs)
-    sequences = read_fasta(args.reference_file)
+    consensus_refs,consensus_seqs = consensus_handler(args.consensus_files)
+    ref_sequences = read_fasta(args.reference_file)
+    comparison_dict = sequence_comparison(ref_sequences,consensus_seqs)
 
-    read_files(args.read_counts, name_dict, consensus_refs, sequences)
+    read_files(args.read_counts, name_dict, consensus_refs, comparison_dict)
     

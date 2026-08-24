@@ -57,7 +57,7 @@ process sampleMetadata {
 
     script:
     """
-    metadata_assembler.py --reference_file ${input_references} --consensus_seqs "${consensus_seqs}" -r "${read_count_files}"
+    metadata_assembler.py --reference_file ${input_references} --consensus_files "${consensus_seqs}" -r "${read_count_files}"
     """
 }
 
