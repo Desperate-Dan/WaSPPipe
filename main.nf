@@ -136,8 +136,7 @@ workflow consensus_wf {
     analysisMetadata(hitsAndMisses_ch.collect(), Channel.value("${params.run_ID}"))
     
     metadata_ch = readCounts_ch.join(consensus_ch).join(coverage_ch)
-    metadata_ch.view()
-    sampleMetadata(metadata_ch.map { [it[0], it[1]] }, inRefs_ch, metadata_ch.map { [it[0], it[2]] })
+    sampleMetadata(metadata_ch.map { [it[0], it[1]] }, inRefs_ch, metadata_ch.map { [it[0], it[2]] }, metadata_ch.map { [it[0], it[3]] })
     metadataCombine(sampleMetadata.out.sample_metadata.collect(), Channel.value("${params.run_ID}"))
 }
 
