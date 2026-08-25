@@ -41,6 +41,7 @@ process analysisMetadata {
 }
 
 process sampleMetadata {
+    container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe"
     publishDir "output/${sample_ID}/", mode: "copy"
 
@@ -50,6 +51,7 @@ process sampleMetadata {
     tuple val(sample_ID), val(read_count_files)
     path input_references
     tuple val(sample_ID), val(consensus_seqs)
+    tuple val(sample_ID), val(coverage_data)
 
     output:
     path ("*_sample_metadata.csv"), emit: sample_metadata
@@ -57,11 +59,12 @@ process sampleMetadata {
 
     script:
     """
-    metadata_assembler.py --reference_file ${input_references} --consensus_files "${consensus_seqs}" -r "${read_count_files}"
+    metadata_assembler.py --reference_file ${input_references} --consensus_files "${consensus_seqs}" --coverage_data "${coverage_data}" -r "${read_count_files}"
     """
 }
 
 process metadataCombine {
+    container "${params.consensus_func}@${params.consensus_func_sha}"
     conda "${HOME}/miniconda3/envs/WaSPPipe"
     publishDir "output/", mode: "copy"
 

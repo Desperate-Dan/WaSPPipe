@@ -1,4 +1,0 @@
-Sample_ID,unfiltered_read_count,filtered_read_count,reference,reads_mapped,reads_mapped_repeat,species,ncbi_link,consensus_generated,estimated_similarity
-barcode20,439191,439043,NC_001474.2,120927,241687,Dengue virus 2,https://www.ncbi.nlm.nih.gov/nuccore/NC_001474.2,Yes,1.0
-barcode20,439191,439043,NC_032111.1,2,2,BeAn 58058 virus,https://www.ncbi.nlm.nih.gov/nuccore/NC_032111.1,No,NA
-barcode20,439191,439043,U87411.1,120760,241687,Dengue virus type 2 (strain 16681) polyprotein mRNA,https://www.ncbi.nlm.nih.gov/nuccore/U87411.1,Yes,1.0

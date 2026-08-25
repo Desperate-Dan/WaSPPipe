@@ -193,14 +193,14 @@ process maskGen {
 
     output:
     tuple val(sample_ref), path("*_combined_masks.tsv"), emit: mask_file, optional: true
-
     tuple val(sample_ref), path("*_mask.tsv"), emit: hits, optional: true
     tuple val(sample_ref), path("NO_REF*"), emit: misses, optional: true
+    tuple val(sample_ID), path("*_coverage_data.csv"), emit: coverage_data, optional: true
 
     script:
     // The use of compgen bothers me a bit (can't use [] as it doesn't support glob), but as long as it's run on BASH it should be okay.
     """
-    maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads}
+    maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads} --coverage_plot --coverage_data
     if compgen -G *_mask.tsv; then cat *_mask.tsv > ${sample_ref}_combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
     """
 }
