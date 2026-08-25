@@ -48,10 +48,11 @@ workflow consensus_wf {
     main:
     inMaxLen_ch = Channel.value("${params.max_len}")
     inMinLen_ch = Channel.value("${params.min_len}")
+    inReadQ_ch = Channel.value("${params.readQ}")
     inTrimLen_ch = Channel.value("${params.trim_len}")
     inRefs_ch = Channel.value("${params.ref}")
     // pipeline functions below here
-    readFilter(inBarcode_ch, inMaxLen_ch, inMinLen_ch)
+    readFilter(inBarcode_ch, inMaxLen_ch, inMinLen_ch, inReadQ_ch)
     primerTrimming(readFilter.out.len_filt_reads, inTrimLen_ch)
     readMapper(primerTrimming.out.trimmed_reads, inRefs_ch)
     readCounts_ch = readMapper.out.read_counts.join(readFilter.out.filtered_read_counts).join(readFilter.out.unfiltered_read_counts)

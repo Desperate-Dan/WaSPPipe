@@ -12,6 +12,7 @@ process readFilter {
     tuple val(sample_ID), path(sample_ID_files)
     val max_length
     val min_length
+    val read_q
 
     output:
     tuple val(sample_ID), path("*filtered.fastq.gz"), emit: len_filt_reads, optional: true
@@ -26,7 +27,7 @@ process readFilter {
     // In future if we want to pass things downstream of read mapper, we could consider .ifEmpty('something') on the channel. Or make bam_read_counter.py output a token if no reads.
     """
     zcat ${sample_ID_files} | fastq_read_counter.py -s ${sample_ID} -c "unfiltered" - > ${sample_ID}_unfiltered_read_counts.csv 
-    zcat ${sample_ID_files} | chopper --minlength ${min_length} --maxlength ${max_length} | pigz > ${sample_ID}_filtered.fastq.gz
+    zcat ${sample_ID_files} | chopper --minlength ${min_length} --maxlength ${max_length} --quality ${read_q}| pigz > ${sample_ID}_filtered.fastq.gz
     zcat ${sample_ID}_filtered.fastq.gz | fastq_read_counter.py -s ${sample_ID} -c "filtered" - > ${sample_ID}_filtered_read_counts.csv
     """
 }
