@@ -28,6 +28,8 @@ process kraken2Standard8Gb {
     container "${params.Standard8Gb_db}@${params.Standard8Gb_db_sha}"
     publishDir "output/${sample_ID}/kraken2_krona_plots", mode: 'copy'
 
+    label 'big_db'
+
     debug false
 
     input:

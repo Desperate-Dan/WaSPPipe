@@ -45,7 +45,7 @@ process sampleMetadata {
     conda "${HOME}/miniconda3/envs/WaSPPipe"
     publishDir "output/${sample_ID}/", mode: "copy"
 
-    debug true
+    //debug true
 
     input:
     tuple val(sample_ID), val(read_count_files)
