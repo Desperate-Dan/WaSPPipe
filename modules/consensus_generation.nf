@@ -197,6 +197,7 @@ process maskGen {
     tuple val(sample_ref), path("*_mask.tsv"), emit: hits, optional: true
     tuple val(sample_ref), path("NO_REF*"), emit: misses, optional: true
     tuple val(sample_ID), path("*_coverage_data.csv"), emit: coverage_data, optional: true
+    path "*"
 
     script:
     // The use of compgen bothers me a bit (can't use [] as it doesn't support glob), but as long as it's run on BASH it should be okay.

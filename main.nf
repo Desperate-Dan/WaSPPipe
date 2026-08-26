@@ -97,7 +97,12 @@ workflow consensus_wf {
     } else if (params.remap_all) {
         refFinder_ch = readMapper.out.read_counts.join(readMapper.out.ref_fasta)
         refFinder(refFinder_ch.map { [it[0], it[1]] }, refFinder_ch.map { [it[0], it[2]] })
-        newRefs_ch = refFinder.out.repeat_ref_fasta.flatMap { sample, refs -> refs.collect { ref -> tuple(sample, ref) } }
+        newRefs_ch = refFinder.out.repeat_ref_fasta.flatMap { sample, refs ->
+            refs instanceof List
+                ? refs.collect { ref -> tuple(sample, ref) }
+                : [tuple(sample, refs)]
+        }
+        newRefs_ch.view()
         repeatMap_ch = newRefs_ch.combine(primerTrimming.out.trimmed_reads.map { sample, reads -> tuple(sample, reads) }, by: 0)
         repeatMapper(repeatMap_ch.map { [it[0], it[1]] }, repeatMap_ch.map { [it[0], it[2]] })
         consensus_ch = run_variant_pipeline(

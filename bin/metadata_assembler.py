@@ -89,7 +89,7 @@ def sequence_comparison(reference_seqs,consensus_seqs):
                 if reference_seqs[consensus_accession][position] == base:
                     matching_positions += 1
         covered_prop = (covered_base_counter/len(consensus_seq))
-        print(f"{consensus_accession} has {covered_base_counter} non-N bases and {matching_positions} similarities.")
+        #print(f"{consensus_accession} has {covered_base_counter} non-N bases and {matching_positions} similarities.")
         comp_tuple = (covered_base_counter, matching_positions, covered_base_counter, covered_prop)
         seq_comparison_dict[consensus_accession] = comp_tuple
 
@@ -100,14 +100,14 @@ def coverage_calc(coverage_data):
     coverage_dict = {}
     for i in coverage_data.lstrip("[").rstrip("]").split(", "):
         file_name = i.split("/")[-1]
-        ref_name = file_name.split("_cov")[0]
+        # This lstriping is mega gross, but appears to hold for the moment. This is will be an issue if sample IDs change away from barcode though, so need to consider a safer way of handling this here and in other sections.
+        ref_name = file_name.lstrip('barcode0123456789').lstrip('_').lstrip('ref').lstrip('_').split("_cov")[0]
         coverage_df = pd.read_csv(i,header=0)
         coverage_df = coverage_df[coverage_df.coverage > 0]
         coverage_df_mean = coverage_df['coverage'].mean()
         coverage_df_median = coverage_df['coverage'].median()
-        print(f"{ref_name} has {coverage_df_mean} average coverage.")
+        #print(f"{ref_name} has {coverage_df_mean} average coverage.")
         coverage_dict[ref_name] = (coverage_df_mean, coverage_df_median)
-    
     return coverage_dict
 
 def read_files(read_counts,name_dict,consensus_refs,comparison_dict,coverage_dict):
@@ -159,7 +159,6 @@ def read_files(read_counts,name_dict,consensus_refs,comparison_dict,coverage_dic
         combined_df['mapped_read_prop'] = round(combined_df.reads_mapped/combined_df.filtered_read_count,2)
     
     combined_df = combined_df[col_order]
-
     # Adding in species names and ncbi links from ref headers as well as lots of other columns!
     species_names = []
     ncbi_links = []
@@ -170,26 +169,30 @@ def read_files(read_counts,name_dict,consensus_refs,comparison_dict,coverage_dic
     coverage_mean = []
     coverage_median = []
 
+
     for ref in combined_df.reference:
+    
         species_names.append(name_dict[ref])
         ncbi_links.append(f'https://www.ncbi.nlm.nih.gov/nuccore/{ref}')
         if ref in consensus_refs:
             consensus_generated.append("Yes")
         else:
             consensus_generated.append("No")
+        # This is actually quite difficult for debugging - add raise to the except section to see where exactly the issue is occuring.
         try:
             covered_bases.append(round(comparison_dict[ref][2],4))
             covered_prop.append(round(comparison_dict[ref][3],4))
             estimated_similarity.append(round(comparison_dict[ref][1]/comparison_dict[ref][0],4))
             coverage_mean.append(round(coverage_dict[ref][0],2))
             coverage_median.append(coverage_dict[ref][1])
-        except:
+        except(KeyError):
             covered_bases.append("NA")
             covered_prop.append("NA")
             estimated_similarity.append("NA")
             coverage_mean.append("NA")
             coverage_median.append("NA")
-
+            
+    
     combined_df['species'] = species_names
     combined_df['ncbi_link'] = ncbi_links
     combined_df['consensus_generated'] = consensus_generated
