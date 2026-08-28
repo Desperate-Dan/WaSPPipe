@@ -143,20 +143,20 @@ def read_files(read_counts,name_dict,consensus_refs,comparison_dict,coverage_dic
 
     try:
         combined_df = pd.merge(read_mapper_counts_df, all_ref_counts_df, on='reference', how='outer', suffixes=(None, '_y'))
-        col_order = ['Sample_ID', 'unfiltered_read_count', 'filtered_read_count', 'reference', 'reads_mapped', 'reads_mapped_repeat', 'mapped_read_prop']
+        col_order = ['Sample_ID', 'unfiltered_read_count', 'filtered_read_count', 'reference', 'reads_mapped', 'reads_mapped_repeat', 'mapped_read_prop_of_filtered_reads']
         
     except:
         combined_df = read_mapper_counts_df.copy()
-        col_order = ['Sample_ID', 'unfiltered_read_count', 'filtered_read_count', 'reference', 'reads_mapped', 'mapped_read_prop']
+        col_order = ['Sample_ID', 'unfiltered_read_count', 'filtered_read_count', 'reference', 'reads_mapped', 'mapped_read_prop_of_filtered_reads']
 
     combined_df = pd.merge(combined_df, filtered_read_counts_df, on='Sample_ID', how='outer', suffixes=(None, '_y'))
     combined_df = pd.merge(combined_df, unfiltered_read_counts_df, on='Sample_ID', how='outer', suffixes=(None, '_y'))
     combined_df = combined_df.drop(columns=[col for col in combined_df.columns if col.endswith('_y')])
     combined_df = combined_df.drop(columns="treatement")
     try:
-        combined_df['mapped_read_prop'] = round(combined_df.reads_mapped_repeat/combined_df.filtered_read_count,2)
+        combined_df['mapped_read_prop_of_filtered_reads'] = round(combined_df.reads_mapped_repeat/combined_df.filtered_read_count,2)
     except:
-        combined_df['mapped_read_prop'] = round(combined_df.reads_mapped/combined_df.filtered_read_count,2)
+        combined_df['mapped_read_prop_of_filtered_reads'] = round(combined_df.reads_mapped/combined_df.filtered_read_count,2)
     
     combined_df = combined_df[col_order]
     # Adding in species names and ncbi links from ref headers as well as lots of other columns!
@@ -193,8 +193,8 @@ def read_files(read_counts,name_dict,consensus_refs,comparison_dict,coverage_dic
             coverage_median.append("NA")
             
     
-    combined_df['species'] = species_names
-    combined_df['ncbi_link'] = ncbi_links
+    combined_df['closest_species_in_reference_set'] = species_names
+    combined_df['ncbi_link_to_reference'] = ncbi_links
     combined_df['consensus_generated'] = consensus_generated
     combined_df['covered_bases'] = covered_bases
     combined_df['genome_covered_propotion'] = covered_prop 

@@ -13,7 +13,7 @@ def metadata_combine_func(metadata_files,run_id):
         df_list.append(pd.read_csv(i, header=0))
 
     metadata_df = pd.concat(df_list)
-    metadata_df.sort_values('Sample_ID')
+    metadata_df = metadata_df.sort_values('Sample_ID')
     cwd = os.getcwd()
     metadata_df.to_csv(f'{cwd}/{run_id}_run_metadata.csv', index=False)
 
