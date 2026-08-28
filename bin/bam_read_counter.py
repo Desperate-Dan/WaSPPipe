@@ -43,8 +43,11 @@ def count_reads_per_reference(bam_file):
         for read in bam:
             # Only count mapped reads (not unmapped)
             if not read.is_unmapped:
-                ref_name = bam.get_reference_name(read.reference_id)
-                read_counts[ref_name] += 1
+                # This checks that supplemental alignment flag is not set. Can accidentally lead to over 100% mapping compared to input reads.
+                # 2048 is supplemental, 2048 + 16 to 2064 is for rev comp supplemental
+                if (read.flag != 2048) & (read.flag != 2064):
+                    ref_name = bam.get_reference_name(read.reference_id)
+                    read_counts[ref_name] += 1
             else:
                 read_counts["unmapped"] += 1
 
