@@ -51,10 +51,11 @@ workflow consensus_wf {
     inReadQ_ch = Channel.value("${params.readQ}")
     inTrimLen_ch = Channel.value("${params.trim_len}")
     inRefs_ch = Channel.value("${params.ref}")
+    inMappingQ_ch = Channel.value("${params.mappingQ}")
     // pipeline functions below here
     readFilter(inBarcode_ch, inMaxLen_ch, inMinLen_ch, inReadQ_ch)
     primerTrimming(readFilter.out.len_filt_reads, inTrimLen_ch)
-    readMapper(primerTrimming.out.trimmed_reads, inRefs_ch)
+    readMapper(primerTrimming.out.trimmed_reads, inRefs_ch, inMappingQ_ch)
     readCounts_ch = readMapper.out.read_counts.join(readFilter.out.filtered_read_counts).join(readFilter.out.unfiltered_read_counts)
     // Variant pipeline remains consistent between each of the mapping modes, but the input channels will change depending on the mode selected.
     def run_variant_pipeline = { mapped_reads_ch, ref_fasta_ch, bam_index_ch, ref_index_ch, sample_id_ch ->
@@ -81,7 +82,7 @@ workflow consensus_wf {
 
     if (params.top_hit_only) {
         topMap_ch = primerTrimming.out.trimmed_reads.join(readMapper.out.read_counts).join(readMapper.out.ref_fasta)
-        topMapper(topMap_ch.map { [it[0], it[1]] }, topMap_ch.map { [it[0], it[2]] }, topMap_ch.map { [it[0], it[3]] })
+        topMapper(topMap_ch.map { [it[0], it[1]] }, topMap_ch.map { [it[0], it[2]] }, topMap_ch.map { [it[0], it[3]] }, inMappingQ_ch)
         consensus_ch = run_variant_pipeline(
             topMapper.out.top_mapped_reads,
             topMapper.out.top_ref_fasta,
@@ -104,7 +105,7 @@ workflow consensus_wf {
         }
 
         repeatMap_ch = newRefs_ch.combine(primerTrimming.out.trimmed_reads.map { sample, reads -> tuple(sample, reads) }, by: 0)
-        repeatMapper(repeatMap_ch.map { [it[0], it[1]] }, repeatMap_ch.map { [it[0], it[2]] })
+        repeatMapper(repeatMap_ch.map { [it[0], it[1]] }, repeatMap_ch.map { [it[0], it[2]] }, inMappingQ_ch)
         consensus_ch = run_variant_pipeline(
             repeatMapper.out.repeat_mapped_reads,
             repeatMapper.out.repeat_ref_fasta,

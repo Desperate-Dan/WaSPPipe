@@ -63,6 +63,7 @@ process readMapper {
     input:
     tuple val(sample_ID), path(trimmed_reads)
     path input_references
+    val mappingQ
 
     output:
     tuple val(sample_ID), path("*.sorted.bam"), emit: mapped_reads
@@ -80,7 +81,7 @@ process readMapper {
     mapping_cmd = ""
     if (params.unmapped_out) {
         mapping_cmd = """
-            minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -o ${sample_ID}.all.bam - 
+            minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -q ${mappingQ} -b -o ${sample_ID}.all.bam - 
             samtools view -b -F 4 ${sample_ID}.all.bam | samtools sort -o ${sample_ID}.sorted.bam - 
             samtools view -b -f 4 ${sample_ID}.all.bam | samtools fastq -0 ${sample_ID}.unmapped.fastq.gz -
         """
@@ -111,6 +112,7 @@ process topMapper {
     tuple val(sample_ID), path(trimmed_reads)
     tuple val(sample_ID), path(read_counts)
     tuple val(sample_ID), path(input_references)
+    val mappingQ
 
     output:
     tuple val(sample_ID), path("*.sorted.bam"), emit: top_mapped_reads
@@ -124,7 +126,7 @@ process topMapper {
     script:
     """
     fasta_xtractor.py -f ${input_references} -b ${read_counts} -o top_hit_${sample_ID} --top_only
-    minimap2 -a --secondary=no -x map-ont top_hit_${sample_ID}*.fasta ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
+    minimap2 -a --secondary=no -x map-ont top_hit_${sample_ID}*.fasta ${trimmed_reads} | samtools view -q ${mappingQ} -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
     bam_read_counter.py -b ${sample_ID}_top_mapped.sorted.bam -o ${sample_ID}_top_map_read_counts.tsv -m 1
     samtools index ${sample_ID}_top_mapped.sorted.bam
     samtools faidx top_hit_${sample_ID}*.fasta
@@ -161,7 +163,8 @@ process repeatMapper {
     input:
     tuple val(sample_ID), path(new_reference)
     tuple val(sample_ID), path(trimmed_reads)
-
+    val mappingQ
+    
     output:
     tuple val(sample_ref), path("*.sorted.bam"), emit: repeat_mapped_reads
     tuple val(sample_ref), path("*.bai"), emit: repeat_bam_index, optional: true
@@ -174,7 +177,7 @@ process repeatMapper {
     script:
     sample_ref = new_reference.baseName
     """
-    minimap2 -a --secondary=no -x map-ont ${new_reference} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ref}.sorted.bam -
+    minimap2 -a --secondary=no -x map-ont ${new_reference} ${trimmed_reads} | samtools view -q ${mappingQ} -b -F 4 - | samtools sort -o ${sample_ref}.sorted.bam -
     bam_read_counter.py -b ${sample_ref}.sorted.bam -o ${sample_ref}_repeat_map_read_counts.tsv -m 1
     samtools index ${sample_ref}.sorted.bam
     samtools faidx ${sample_ref}.fasta
