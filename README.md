@@ -58,13 +58,22 @@ Open this "output" folder and you will see a folder per barcode in your sequenci
   <img src="docs/Ref_matches_report_example.png" alt="Example krona plot" width="700" />
 </p>
 
-You may also wish to view the Kraken2 reports for each of the barcodes, to see what taxonomic level Kraken2 predicts the reads in a sample map to. You can open the "Multi_krona.html" file located in the "kraken2_krona_plots_combined" folder to do this. In these krona plots, you will see the proportion of reads that map to a given taxonomic level in the dount chart. You can click on these sections to expand them and explore sub-levels of each. In the top left you can choose the krona plot for each barcode separately. Importantly, in the top left panel, the `Magnitude` number represents the number of reads at that given taxonomic level. In the image below you will see an example Krona plot of the Kraken2 results for barcode 19 in pour example dataset. You can see that Dengue virus 2 makes up 81% of the sample. After clicking on Dengue virus 2, you will see the magnitude, or number of reads predicted to be Dengue virus 2, is 317,312 (as highlighted by the red box)
+You may also wish to view the Kraken2 reports for each of the barcodes, to see what taxonomic level Kraken2 predicts the reads in a sample map to. You can open the "Multi_krona.html" file located in the "kraken2_krona_plots_combined" folder to do this. In these krona plots, you will see the proportion of reads that map to a given taxonomic level in the dount chart. You can click on these sections to expand them and explore sub-levels of each. In the top left you can choose the krona plot for each barcode separately. Importantly, in the top left panel, the `Magnitude` number represents the number of reads at that given taxonomic level. In the image below you will see an example Krona plot of the Kraken2 results for barcode 19 in our example dataset. You can see that Dengue virus 2 makes up 81% of the sample. After clicking on Dengue virus 2, you will see the magnitude, or number of reads predicted to be Dengue virus 2, is 317,312 (as highlighted by the red box)
 
-#### NB: Currently the only Kraken2 database option in WaSPPipe is the viral database. This means that Kraken2 will only predict viral taxons in the sample, so a barcode with no hits could still have plenty of bacterial reads in it for example. The option to run other Kraken2 databases will be added in the future.
+#### NB: ~~Currently the only Kraken2 database option in WaSPPipe is the viral database. This means that Kraken2 will only predict viral taxons in the sample, so a barcode with no hits could still have plenty of bacterial reads in it for example. The option to run other Kraken2 databases will be added in the future.~~ 
+#### v1.2.0 has added the ability to change databases! You can now use either the Viral database (default) or the Standard-8Gb databse. See the [release notes](https://github.com/Desperate-Dan/WaSPPipe/releases/tag/v1.2.0) for more details.
 
 <p align="center">
   <img src="docs/Example_krona.png" alt="Example krona plot" width="700" />
 </p>
+
+Since release **v1.2.0** there has been an extended metadata file produced by the pipeline. You can see an example of the output table below. This metadata file is located in the output directory of your analysis run and will be called `<run_ID>_run_metadata.csv`. It contains lots of information on the consneus generation process and has a row per sample (barcode) per reference with reads mapped to it. Much more detail on the contents of the new metadata file can be found [here](METADATA_COLUMNS.md).
+
+<p align="center">
+  <img src="docs/Metadata_example_output.png" alt="epi2me setup" width="800" />
+</p>
+
+In v1.2.0 a coverage plot is also output for each 
 
 ### Errors
 As this pipeline is in an early stage of development we expect there to be a range of new an exciting errors produced when running it. If your pipeline says "Stopped with error", the first thing to do is look at the "Logs" tab in your EPI2ME run, and read the "Nextflow Logs" section. It is possible that the pipeline can't see your fastq_pass folder for instance. 

@@ -32,6 +32,107 @@
           "description": "The reference file your samples will be mapped against for reference based assembly (default: WaSPP curated viral family references).",
           "help_text": "Change this to a custom reference file to map your samples against. The default contains all NCBI reference sequences for the members of the viral families of interest to the WaSPP project."
         },
+        "remap_all": {
+          "type": "boolean",
+          "title": "Remap all reads in a sample against each reference with at least one read mapped to it",
+          "default": false,
+          "description": "Selecting this will remap your reads against every reference with at least one read mapped to it in an initial mapping step using only that reference. This in theory will allow any reads that may map to a similar but divergent references to map to this particular reference. A consensus sequence is then generated for each reference where at least 'Read Count' reads have mapped.",
+          "help_text": "Warning - this can option can make the pipeline significantly slower if there are many more sequences to call vairants on. Note - that this cannont be used with 'top hit' mode above, and if both are selected only 'top hit' mode will run."
+        },
+        "top_hit_only": {
+          "type": "boolean",
+          "title": "Use only the top hit reference for each sample",
+          "default": false,
+          "description": "By default the pipeline will build a consensus sequence for each reference that has at least the 'read count' stated above mapped to it. If you want to build a consensus only for the top hit reference in each sample you can tick this box.",
+          "help_text": "This is particularly useful if your reference set contains many closely related sequences, as it can be difficult to determine which one is the best reference for a given sample. After an initial mapping step, the pipeline will check what reference has the most reads mapped to it, then will remap all reads in the sample to that reference."
+        },
+        "parse_all": {
+          "type": "boolean",
+          "title": "Parse all folders in the fastq_pass folder",
+          "default": false,
+          "description": "By default the pipeline will only process folders in the fastq_pass directory that start with 'barcode'",
+          "help_text": "but if you want to parse all folders in the fastq_pass directory (if you want to include 'Unclassified' or have folders starting with something other than 'barcode') you can tick this box. WARNING: processing the 'Unclassified' folder can significantly increase the runtime and memory usage!"
+        }
+      },
+      "allOf": [
+        {
+          "required": [
+            "fastq",
+            "run_ID"
+          ]
+        }
+      ]
+    },
+    "filtering_options": {
+      "title": "Filtering Options",
+      "type": "object",
+      "fa_icon": "fas fa-terminal",
+      "description": "Adjust settings for the read filtering steps.",
+      "properties": {
+        "readQ": {
+          "type": "integer",
+          "title": "Read Quality",
+          "default": 12,
+          "description": "Change the minimum read quality threshold (default: 12).",
+          "help_text": "During the initial filtering step, if a read's average quality is below this threshold it will be discarded."
+        },
+        "max_len": {
+          "type": "integer",
+          "title": "Maximum read length",
+          "default": 1500,
+          "description": "Reads above this length will be filtered before read mapping (deafult: 1500bp).",
+          "help_text": "Standard WaSPP primers shouldn't generate a fragment longer than 1500bp."
+        },
+        "min_len": {
+          "type": "integer",
+          "title": "Minimum read length",
+          "default": 100,
+          "description": "Reads below this length will be filtered before read mapping (default: 100bp)."
+        },
+        "trim_len": {
+          "type": "integer",
+          "title": "Trim length",
+          "default": 30,
+          "description": "Number of bases to trim from the ends of the reads to remove primers (default: 30bp).",
+          "help_text": "Currently WaSPP primers are not longer than 30bp, so trimming this length should remove primer sequences from downstream analysis."
+        }
+      }
+    },
+    "mapping_options": {
+      "title": "Mapping Options",
+      "type": "object",
+      "fa_icon": "fas fa-terminal",
+      "description": "Adjust settings for the mapping steps.",
+      "properties": {
+        "mappingQ": {
+          "type": "integer",
+          "title": "Mapping Quality",
+          "default": 15,
+          "description": "Change the minimum read mapping quality threshold (default: 15).",
+          "help_text": "If the read mapping quality is below this threshold it won't be considered as part of the count for minimum read count."
+        },
+        "read_count": {
+          "type": "integer",
+          "title": "Read Count",
+          "default": 50,
+          "description": "The minimum number of reads mapping to a reference to be considered for consensus generation (default: 50).",
+          "help_text": "After mapping to your reference(s) of choice, if a given reference has at least this number of reads mapped to it WaSSPipe will try to generate a consensus sequence for it. The mapping quality of these reads (see below) is considered when read counting."
+        },
+        "unmapped_out": {
+          "type": "boolean",
+          "title": "Output unmapped reads",
+          "default": false,
+          "description": "If selected, the pipeline will output unmapped reads in a separate file.",
+          "help_text": "The unmapped reads will be output in the read_mapping_3 output directory, so will be filtered based upon the relevant criteria (min length, max length and read quality). The unmapped reads will only be generated after the first mapping step regardless of other mapping options selected above."
+        }
+      }
+    },
+    "consensus_options": {
+      "title": "Consensus Options",
+      "type": "object",
+      "fa_icon": "fas fa-terminal",
+      "description": "Adjust settings for the consensus generation steps.",
+      "properties": {
         "depth": {
           "type": "integer",
           "title": "Read depth",
@@ -45,72 +146,8 @@
           "default": 20,
           "description": "Change the minimum base quality threshold (default: 20).",
           "help_text": "If a base quality score is below this value it won't be considered as part of the count for read depth."
-        },
-        "read_count": {
-          "type": "integer",
-          "title": "Read Count",
-          "default": 50,
-          "description": "The minimum number of reads mapping to a reference to be considered for consensus generation (default: 50).",
-          "help_text": "After mapping to your reference(s) of choice, if a given reference has at least this number of reads mapped to it WaSSPipe will try to generate a consensus sequence for it. The mapping quality of these reads (see below) is considered when read counting."
-        },
-        "mappingQ": {
-          "type": "integer",
-          "title": "Mapping Quality",
-          "default": 15,
-          "description": "Change the minimum read mapping quality threshold (default: 15).",
-          "help_text": "If the read mapping quality is below this threshold it won't be considered as part of the count for minimum read count."
-        },
-        "max_len": {
-            "type": "integer",
-            "title": "Maximum read length",
-            "default": 1500,
-            "description": "Reads above this length will be filtered before read mapping (deafult: 1500bp).",
-            "help_text": "Standard WaSPP primers shouldn't generate a fragment longer than 1500bp."
-        },
-        "min_len": {
-            "type": "integer",
-            "title": "Minimum read length",
-            "default": 100,
-            "description": "Reads below this length will be filtered before read mapping (default: 100bp)."
-        },
-        "trim_len": {
-            "type": "integer",
-            "title": "Trim length",
-            "default": 30,
-            "description": "Number of bases to trim from the ends of the reads to remove primers (default: 30bp).",
-            "help_text": "Currently WaSPP primers are not longer than 30bp, so trimming this length should remove primer sequences from downstream analysis."
-        },
-        "clair3_model": {
-            "type": "string",
-            "title": "Clair3 model name",
-            "default": "r1041_e82_400bps_hac_v520",
-            "description": "The Clair3 model to use for variant calling (default: r1041_e82_400bps_hac_v520).",
-            "help_text": "This is the Clair3 model that will be used for variant calling. The default is a model trained on R10.4.1 data (r1041), with High Accuracy basecalling (hac) with version 5.2.0 of Dorado (v520), which should be suitable for most applications. You can change this to a different model if you have specific requirements. If you are unsure of which model your reads have been basecalled with, you can check the fastq headers of your reads, which should contain the model name in the format 'basecall_model_version_id=dna_r10.4.1_e8.2_400bps_hac@v5.2.0'.",
-            "enum": ["r1041_e82_400bps_hac_v520", "r1041_e82_400bps_sup_v520", "r1041_e82_400bps_hac_v500", "r1041_e82_400bps_hac_v410", "r1041_e82_400bps_sup_v410", "r1041_e82_400bps_sup_v500"]
-        },
-        "parse_all": {
-            "type": "boolean",
-            "title": "Parse all folders in the fastq_pass folder",
-            "default": false,
-            "description": "By default the pipeline will only process folders in the fastq_pass directory that start with 'barcode'",
-            "help_text": "but if you want to parse all folders in the fastq_pass directory (if you want to include 'Unclassified' or have folders starting with something other than 'barcode') you can tick this box. WARNING: processing the 'Unclassified' folder can significantly increase the runtime and memory usage!"
-        },
-        "top_hit_only": {
-            "type": "boolean",
-            "title": "Use only the top hit reference for each sample",
-            "default": false,
-            "description": "By default the pipeline will build a consensus sequence for each reference that has at least the 'read count' stated above mapped to it. If you want to build a consensus only for the top hit reference in each sample you can tick this box.",
-            "help_text": "This is particularly useful if your reference set contains many closely related sequences, as it can be difficult to determine which one is the best reference for a given sample. After an initial mapping step, the pipeline will check what reference has the most reads mapped to it, then will remap all reads in the sample to that reference."
         }
-      },
-      "allOf": [
-        {
-          "required": [
-            "fastq",
-            "run_ID"
-          ]
-        }
-      ]
+      }
     },
     "Kraken_options": {
       "title": "Kraken2 Options",
@@ -120,12 +157,11 @@
       "properties": {
         "database": {
           "type": "string",
-          "format": "path",
           "title": "Kraken2 Database",
           "description": "Change the database to use for Kraken2 read assignment (deafult: Viral).",
-          "help_text": "NB VIRAL IS THE ONLY OPTION CURRENTLY AVAILABLE, BUT THIS WILL CHANGE IN THE FUTURE IF OTHER DATABASES ARE ADDED TO THE PIPELINE.",
+          "help_text": "The Viral database contains all NCBI Refseq viral sequences. The Standard database contains Refseq archaea, bacteria, viral, plasmid, human and UniVec_Core, but is downsampled to a specific size (eg 8Gb). You MUST ensure your computer has at least that amount of RAM to run that particular database. A selection of databses can be found here: https://benlangmead.github.io/aws-indexes/k2",
           "default": "Viral",
-          "enum": ["Viral","Other_ones"]
+          "enum": ["Viral","Standard-8Gb"]
         },
         "individual_krona": {
           "type": "boolean",
@@ -133,6 +169,22 @@
           "description": "Choose whether to generate individual krona plots for each sample or not (default: False).",
           "help_text": "",
           "default": false
+        }
+      }
+    },
+    "Variant_options": {
+      "title": "Variant Calling Options",
+      "type": "object",
+      "fa_icon": "fas fa-file-import",
+      "description": "Change Clair3 options",
+      "properties": {
+        "clair3_model": {
+          "type": "string",
+          "title": "Clair3 model name",
+          "default": "r1041_e82_400bps_hac_v520",
+          "description": "The Clair3 model to use for variant calling (default: r1041_e82_400bps_hac_v520).",
+          "help_text": "This is the Clair3 model that will be used for variant calling. The default is a model trained on R10.4.1 data (r1041), with High Accuracy basecalling (hac) with version 5.2.0 of Dorado (v520), which should be suitable for most applications. You can change this to a different model if you have specific requirements. If you are unsure of which model your reads have been basecalled with, you can check the fastq headers of your reads, which should contain the model name in the format 'basecall_model_version_id=dna_r10.4.1_e8.2_400bps_hac@v5.2.0'.",
+          "enum": ["r1041_e82_400bps_hac_v520", "r1041_e82_400bps_sup_v520", "r1041_e82_400bps_hac_v500", "r1041_e82_400bps_hac_v410", "r1041_e82_400bps_sup_v410", "r1041_e82_400bps_sup_v500"]
         }
       }
     },

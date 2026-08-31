@@ -1,111 +1,186 @@
 # WaSPPipe Parameters Reference
 
-This document describes all configurable parameters for the WaSPPipe pipeline.
+This document describes the current configurable parameters for the WaSPPipe pipeline, synced with the workflow config and JSON schema.
 
 ---
 
 ## Input Options
 
-Define where the pipeline should find input data and change some frequently used options.
+Define where the pipeline should find input data and change some of the core run settings.
 
 ### fastq
 - **flag** ```--fastq```
 - **Type:** String (path)
 - **Required:** Yes
-- **Description:** Provide the path to the fastq_pass directory for your run.
-- **Help:** This should be the the path the the fastq_pass folder, which should contain a folder for each barcode in your run. This expects your data to be demultiplexed already, you will need to do that through Minknow if it is not already demultiplexed.
+- **Description:** Path to the fastq_pass directory for the sequencing run.
+- **Help:** This should point to the fastq_pass folder containing one directory per barcode. Data must already be demultiplexed.
+
+### run_ID
+- **flag** ```--run_ID```
+- **Type:** String
+- **Required:** Yes
+- **Description:** Run ID for the sequencing run. This must match the Run ID entered into REDCap.
 
 ### ref
 - **flag** ```--ref```
 - **Type:** String (path)
-- **Description:** The reference file your samples will be mapped against for reference based assembly (default: WaSPP curated viral family references).
-- **Help:** Change this to a custom reference file to map your samples against. The default contains all NCBI reference sequences for the members of the viral families of interest to the WaSPP project.
+- **Default:** WaSPP curated viral family reference set
+- **Description:** Reference file the samples will be mapped against for reference-based assembly.
+- **Help:** Change this to a custom reference FASTA if needed.
 
-### depth
-- **flag** ```--depth```
-- **Type:** Integer
-- **Default:** 20
-- **Description:** Positions below this depth will be masked in the resulting consensus sequences (default: 20).
-- **Help:** When generating a consensus sequence, if there are less than this number of reads at that position it will be replaced with an N. The base quality (see below) is considered when counting the read depth at a position.
+### remap_all
+- **flag** ```--remap_all```
+- **Type:** Boolean
+- **Default:** False
+- **Description:** Remap reads against every reference that had at least one read mapped in the initial pass.
+- **Help:** This can improve sensitivity for divergent but related references, but it can also significantly slow the pipeline.
 
-### baseQ
-- **flag** ```--baseQ```
-- **Type:** Integer
-- **Default:** 20
-- **Description:** Change the minimum base quality threshold (default: 20).
-- **Help:** If a base quality score is below this value it won't be considered as part of the count for read depth.
+### top_hit_only
+- **flag** ```--top_hit_only```
+- **Type:** Boolean
+- **Default:** False
+- **Description:** Build consensus sequences only for the top-hit reference in each sample.
+- **Help:** After the first mapping, the pipeline selects the reference with the largest read count and remaps to that reference only.
 
-### read_count
-- **flag** ```--read_count```
-- **Type:** Integer
-- **Default:** 50
-- **Description:** The minimum number of reads mapping to a reference to be considered for consensus generation (default: 50).
-- **Help:** After mapping to your reference(s) of choice, if a given reference has at least this number of reads mapped to it WaSSPipe will try to generate a consensus sequence for it. The mapping quality of these reads (see below) is considered when read counting.
+### parse_all
+- **flag** ```--parse_all```
+- **Type:** Boolean
+- **Default:** False
+- **Description:** Parse all folders in the fastq_pass directory instead of only barcode-prefixed folders.
+- **Help:** This allows folders such as Unclassified to be included, but can increase runtime and memory use substantially.
 
-### mappingQ
-- **flag** ```--mappingQ```
+---
+
+## Filtering Options
+
+These options control read quality and trimming before mapping.
+
+### readQ
+- **flag** ```--readQ```
 - **Type:** Integer
-- **Default:** 15
-- **Description:** Change the minimum read mapping quality threshold (default: 15).
-- **Help:** If the read mapping quality is below this threshold it won't be considered as part of the count for minimum read count.
+- **Default:** 12
+- **Description:** Minimum read quality threshold for filtering.
+- **Help:** During initial filtering, reads with average quality below this value are discarded.
 
 ### max_len
 - **flag** ```--max_len```
 - **Type:** Integer
 - **Default:** 1500
-- **Description:** Reads above this length will be filtered before read mapping (default: 1500bp).
-- **Help:** Standard WaSPP primers shouldn't generate a fragment longer than 1500bp.
+- **Description:** Reads above this length are filtered before mapping.
+- **Help:** Standard WaSPP primers should not create fragments longer than ~1500bp.
 
 ### min_len
 - **flag** ```--min_len```
 - **Type:** Integer
 - **Default:** 100
-- **Description:** Reads below this length will be filtered before read mapping (default: 100bp).
+- **Description:** Reads below this length are filtered before mapping.
 
 ### trim_len
 - **flag** ```--trim_len```
 - **Type:** Integer
 - **Default:** 30
-- **Description:** Number of bases to trim from the ends of the reads to remove primers (default: 30bp).
-- **Help:** Currently WaSPP primers are not longer than 30bp, so trimming this length should remove primer sequences from downstream analysis.
+- **Description:** Number of bases trimmed from read ends to remove primer sequence.
+- **Help:** WaSPP primers are typically <=30bp, so trimming this length should remove them from downstream analysis.
+
+---
+
+## Mapping Options
+
+### mappingQ
+- **flag** ```--mappingQ```
+- **Type:** Integer
+- **Default:** 15
+- **Description:** Minimum read mapping quality threshold.
+- **Help:** Reads below this threshold are not counted toward the minimum read count.
+
+### read_count
+- **flag** ```--read_count```
+- **Type:** Integer
+- **Default:** 50
+- **Description:** Minimum number of reads mapping to a reference required to attempt consensus generation.
+- **Help:** If a reference has at least this many mapped reads, the pipeline will try to build a consensus for it.
+
+### unmapped_out
+- **flag** ```--unmapped_out```
+- **Type:** Boolean
+- **Default:** False
+- **Description:** Output unmapped reads in a separate file.
+- **Help:** Unmapped reads are written in the read_mapping_3 output directory after the first mapping step.
+
+---
+
+## Consensus Options
+
+### depth
+- **flag** ```--depth```
+- **Type:** Integer
+- **Default:** 20
+- **Description:** Positions below this depth are masked in the final consensus sequences.
+- **Help:** If a site has fewer than this number of reads, it is replaced with an N.
+
+### baseQ
+- **flag** ```--baseQ```
+- **Type:** Integer
+- **Default:** 20
+- **Description:** Minimum base quality threshold used when counting read depth.
+- **Help:** Bases below this quality do not contribute to the depth calculation.
 
 ---
 
 ## Kraken2 Options
 
-Change Kraken2 options
-
 ### database
 - **flag** ```--database```
-- **Type:** String (path)
+- **Type:** String
 - **Default:** Viral
-- **Description:** Change the database to use for Kraken2 read assignment (default: Viral).
-- **Help:** NB VIRAL IS THE ONLY OPTION CURRENTLY AVAILABLE, BUT THIS WILL CHANGE IN THE FUTURE IF OTHER DATABASES ARE ADDED TO THE PIPELINE.
-- **Options:** Viral, Other_ones
+- **Description:** Kraken2 database to use for read classification.
+- **Options:** Viral, Standard-8Gb
+- **Help:** The Viral database is the default option. The Standard-8Gb database is available but requires appropriate memory.
 
 ### individual_krona
 - **flag** ```--individual_krona```
 - **Type:** Boolean
 - **Default:** False
-- **Description:** Choose whether to generate individual krona plots for each sample or not (default: False).
+- **Description:** Generate individual Krona plots for each sample.
+
+---
+
+## Variant Calling Options
+
+### clair3_model
+- **flag** ```--clair3_model```
+- **Type:** String
+- **Default:** r1041_e82_400bps_hac_v500
+- **Description:** Clair3 model used for variant calling.
+- **Help:** This is passed directly to the Clair3 step for the selected sequencing chemistry/basecalling model.
 
 ---
 
 ## Miscellaneous Options
 
-Everything else. These options are common to all nf-core pipelines and allow you to customise some of the core preferences for how the pipeline runs.
-
-Typically these options would be set in a Nextflow config file loaded for all pipeline runs, such as `~/.nextflow/config`.
+These options are common to Nextflow workflows and allow tuning of runtime behavior.
 
 ### help
 - **flag** ```--help```
 - **Type:** Boolean
-- **Description:** Display help text
+- **Description:** Display help text.
 
 ### version
 - **flag** ```--version```
 - **Type:** Boolean
 - **Description:** Display version and exit.
+
+### outdir
+- **flag** ```--outdir```
+- **Type:** String
+- **Default:** output
+- **Description:** Output directory for pipeline results.
+
+### publish_dir_mode
+- **flag** ```--publish_dir_mode```
+- **Type:** String
+- **Default:** copy
+- **Description:** File publish mode used by Nextflow for output staging.
 
 ---
 

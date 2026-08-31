@@ -12,15 +12,23 @@ process readFilter {
     tuple val(sample_ID), path(sample_ID_files)
     val max_length
     val min_length
+    val read_q
 
     output:
     tuple val(sample_ID), path("*filtered.fastq.gz"), emit: len_filt_reads, optional: true
+    tuple val(sample_ID), path("*_filtered_read_counts.csv"), emit: filtered_read_counts, optional: true
+    tuple val(sample_ID), path("*_unfiltered_read_counts.csv"), emit: unfiltered_read_counts, optional: true
     path "*"
 
     script:
-    // Vaguely concerned that this is a hacky way to get chopper to take in multiple files, need to think on this.
+    // If no reads pass the filter, the filtered.fastq.gz file will be empty and fastq_read_counter will return 0 reads. This is fine, but we need to make sure that the downstream processes can handle this case.
+    // If no reads pass the filter, the pipeline continues happily until and stops at the mask generation step with an output of NO_REF_WITH_MORE_THAN_${params.read_count}_READS.
+    // In the alternate mapping modes, the pipeline finishes after the first read mapping step as no *_read_counts.tsv file is produced. The pipeline does not break though.
+    // In future if we want to pass things downstream of read mapper, we could consider .ifEmpty('something') on the channel. Or make bam_read_counter.py output a token if no reads.
     """
-    zcat ${sample_ID_files} | chopper --minlength ${min_length} --maxlength ${max_length} | pigz > ${sample_ID}_filtered.fastq.gz
+    zcat ${sample_ID_files} | fastq_read_counter.py -s ${sample_ID} -c "unfiltered" - > ${sample_ID}_unfiltered_read_counts.csv 
+    zcat ${sample_ID_files} | chopper --minlength ${min_length} --maxlength ${max_length} --quality ${read_q}| pigz > ${sample_ID}_filtered.fastq.gz
+    zcat ${sample_ID}_filtered.fastq.gz | fastq_read_counter.py -s ${sample_ID} -c "filtered" - > ${sample_ID}_filtered_read_counts.csv
     """
 }
 
@@ -55,6 +63,7 @@ process readMapper {
     input:
     tuple val(sample_ID), path(trimmed_reads)
     path input_references
+    val mappingQ
 
     output:
     tuple val(sample_ID), path("*.sorted.bam"), emit: mapped_reads
@@ -62,13 +71,25 @@ process readMapper {
     tuple val(sample_ID), path("*_read_counts.tsv"), emit: read_counts, optional: true
     tuple val(sample_ID), path("*.fai"), emit: ref_index
     tuple val(sample_ID), path(input_references), emit: ref_fasta
+    tuple val(sample_ID), val(sample_ID), emit: original_sample_ID
     path "*"
 
     script:
     // The samtools view section removes any unmapped reads from the output bam file for space efficiency.
     // What happens if absolutely nothing maps? Need to investigate... it breaks! (well in the topMapper step, but not here)
+    // The unmapped reads lose their header information.
+    mapping_cmd = ""
+    if (params.unmapped_out) {
+        mapping_cmd = """
+            minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -q ${mappingQ} -b -o ${sample_ID}.all.bam - 
+            samtools view -b -F 4 ${sample_ID}.all.bam | samtools sort -o ${sample_ID}.sorted.bam - 
+            samtools view -b -f 4 ${sample_ID}.all.bam | samtools fastq -0 ${sample_ID}.unmapped.fastq.gz -
+        """
+    } else {
+        mapping_cmd = "minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -q ${mappingQ} -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -"
+    }
     """
-    minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -
+    ${mapping_cmd}
     bam_read_counter.py -b ${sample_ID}.sorted.bam -o ${sample_ID}_read_counts.tsv -m 1
     samtools index ${sample_ID}.sorted.bam
     samtools faidx ${input_references}
@@ -91,20 +112,75 @@ process topMapper {
     tuple val(sample_ID), path(trimmed_reads)
     tuple val(sample_ID), path(read_counts)
     tuple val(sample_ID), path(input_references)
+    val mappingQ
 
     output:
     tuple val(sample_ID), path("*.sorted.bam"), emit: top_mapped_reads
     tuple val(sample_ID), path("*.bai"), emit: top_bam_index, optional: true
     tuple val(sample_ID), path("*top_hit*.fasta"), emit: top_ref_fasta, optional: true
     tuple val(sample_ID), path("*.fai"), emit: top_ref_index
+    tuple val(sample_ID), val(sample_ID), emit: original_sample_ID
+    tuple val(sample_ID), path("*_top_map_read_counts.tsv"), emit: top_read_counts, optional: true
     path "*"
 
     script:
     """
     fasta_xtractor.py -f ${input_references} -b ${read_counts} -o top_hit_${sample_ID} --top_only
-    minimap2 -a --secondary=no -x map-ont top_hit_${sample_ID}*.fasta ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
+    minimap2 -a --secondary=no -x map-ont top_hit_${sample_ID}*.fasta ${trimmed_reads} | samtools view -q ${mappingQ} -b -F 4 - | samtools sort -o ${sample_ID}_top_mapped.sorted.bam -
+    bam_read_counter.py -b ${sample_ID}_top_mapped.sorted.bam -o ${sample_ID}_top_map_read_counts.tsv -m 1
     samtools index ${sample_ID}_top_mapped.sorted.bam
     samtools faidx top_hit_${sample_ID}*.fasta
+    """
+}
+
+process refFinder {
+    // This process will take the read_counts produced by bam_read_counter and extract the relevant reference sequences. The plan is use this to flatten the output for separate downstream processing.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/${sample_ID}/repeat_mapping_3.1", mode: "copy"
+
+    input:
+    tuple val(sample_ID), path(read_counts)
+    tuple val(sample_ID), path(input_references)
+
+    output:
+    tuple val(sample_ID), path("*_ref*.fasta"), emit: repeat_ref_fasta, optional: true
+    
+    script:
+    """
+    fasta_xtractor.py -f ${input_references} -b ${read_counts} -s ${sample_ID}_ref
+    """ 
+}
+
+process repeatMapper {
+    // This process will take the mapped reads and their corresponding reference sequences and remap them to just the reference sequence they mapped best to in the initial mapping step. This is to try and mop up any reads that may have been missed in the initial mapping due to the presence of multiple similar reference sequences.
+    // I've noticed something interesting when remapping. Somethimes the read count can actually go down after remapping. This appears to be due to how minimap2 handles large reference files. If the reference is above 4Gb in length, minimap2 will split the reference into chunks. It is unclear to me if that is the case when it is multiple smaller sequences that combined are over 4Gb in length.
+    // When the reference is chunked it can result in some differences in quality score. This I believe is the reason why there are some reads that get mapped initially but then do not make it through the second round. Will have to keep an eye on this to see if it is an edge case or routine. 
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/${sample_ID}/repeat_mapping_3.1", mode: "copy"
+
+    input:
+    tuple val(sample_ID), path(new_reference)
+    tuple val(sample_ID), path(trimmed_reads)
+    val mappingQ
+
+    output:
+    tuple val(sample_ref), path("*.sorted.bam"), emit: repeat_mapped_reads
+    tuple val(sample_ref), path("*.bai"), emit: repeat_bam_index, optional: true
+    tuple val(sample_ref), path(new_reference), emit: repeat_ref_fasta, optional: true
+    tuple val(sample_ref), path("*.fai"), emit: repeat_ref_index
+    tuple val(sample_ref), val(sample_ID), emit: original_sample_ID
+    tuple val(sample_ID), path("*_repeat_map_read_counts.tsv"), emit: repeat_read_counts, optional: true
+    path "*"
+
+    script:
+    sample_ref = new_reference.baseName
+    """
+    minimap2 -a --secondary=no -x map-ont ${new_reference} ${trimmed_reads} | samtools view -q ${mappingQ} -b -F 4 - | samtools sort -o ${sample_ref}.sorted.bam -
+    bam_read_counter.py -b ${sample_ref}.sorted.bam -o ${sample_ref}_repeat_map_read_counts.tsv -m 1
+    samtools index ${sample_ref}.sorted.bam
+    samtools faidx ${sample_ref}.fasta
     """
 }
 
@@ -115,20 +191,22 @@ process maskGen {
     publishDir "output/${sample_ID}/mask_generation_4", mode: "copy"
 
     input:
-    tuple val(sample_ID), path(mapped_reads)
-    tuple val(sample_ID), path(bam_index)
+    tuple val(sample_ref), path(mapped_reads)
+    tuple val(sample_ref), path(bam_index)
+    tuple val(sample_ref), val(sample_ID)
 
     output:
-    tuple val(sample_ID), path("*_combined_masks.tsv"), emit: mask_file, optional: true
-
-    tuple val(sample_ID), path("*_mask.tsv"), emit: hits, optional: true
-    tuple val(sample_ID), path("NO_REF*"), emit: misses, optional: true
+    tuple val(sample_ref), path("*_combined_masks.tsv"), emit: mask_file, optional: true
+    tuple val(sample_ref), path("*_mask.tsv"), emit: hits, optional: true
+    tuple val(sample_ref), path("NO_REF*"), emit: misses, optional: true
+    tuple val(sample_ID), path("*_coverage_data.csv"), emit: coverage_data, optional: true
+    path "*"
 
     script:
     // The use of compgen bothers me a bit (can't use [] as it doesn't support glob), but as long as it's run on BASH it should be okay.
     """
-    maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads}
-    if compgen -G *_mask.tsv; then cat *_mask.tsv > ${sample_ID}_combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
+    maskara -d ${params.depth} -q ${params.baseQ} --reads ${params.read_count} --mmm ${mapped_reads} --coverage_plot --coverage_data
+    if compgen -G *_mask.tsv; then cat *_mask.tsv > ${sample_ref}_combined_masks.tsv; else touch NO_REF_WITH_MORE_THAN_${params.read_count}_READS; fi
     """
 }
 
@@ -141,23 +219,24 @@ process variantCalling {
     debug false
 
     input:
-    tuple val(sample_ID), path(mapped_reads)
-    tuple val(sample_ID), path(input_references)
-    tuple val(sample_ID), path(bam_index)
-    tuple val(sample_ID), path(ref_index)
-    tuple val(sample_ID), path (mask_file)
+    tuple val(sample_ref), path(mapped_reads)
+    tuple val(sample_ref), path(input_references)
+    tuple val(sample_ref), path(bam_index)
+    tuple val(sample_ref), path(ref_index)
+    tuple val(sample_ref), path (mask_file)
+    tuple val(sample_ref), val(sample_ID)
     val(clair3_model)
 
     output:
-    tuple val(sample_ID), path("*_merge_output.vcf.gz"), emit: variant_file, optional: true
+    tuple val(sample_ref), path("*_merge_output.vcf.gz"), emit: variant_file, optional: true
     path "*", optional: true
 
     script:
     // The addition of \$PWD to the inputs of clair3 is vital for getting clair3 to locate the files. In general Nextflow tells docker to mount the input files with the full path to the work subfolder that the analysis is being run in.
-    //Previous versions of clair3 were able to find the files without \$PWD but the latest versions do not, presumably this is to do with the python wrapper that was introduced from v2.0.0 onwards.
+    // Previous versions of clair3 were able to find the files without \$PWD but the latest versions do not, presumably this is to do with the python wrapper that was introduced from v2.0.0 onwards.
     """
     /opt/bin/run_clair3.sh --ref_fn="\$PWD/${input_references}" --bam_fn="\$PWD/${mapped_reads}" --threads=8 --platform="ont" --model_path="/opt/models/${clair3_model}" --output="\$PWD" --enable_long_indel --chunk_size=10000 --haploid_sensitive --no_phasing_for_fa --include_all_ctgs --enable_variant_calling_at_sequence_head_and_tail
-    if [ -f merge_output.vcf.gz ]; then mv merge_output.vcf.gz ${sample_ID}_merge_output.vcf.gz; fi
+    if [ -f merge_output.vcf.gz ]; then mv merge_output.vcf.gz ${sample_ref}_merge_output.vcf.gz; fi
     if [ -d tmp ]; then rm -r tmp; fi
     """
 }
@@ -169,13 +248,13 @@ process makeConsensus {
     publishDir "output/${sample_ID}/consensus_generation_6", mode: "copy"
 
     input:
-    tuple val(sample_ID), path(variant_file)
-    tuple val(sample_ID), path(mask_file)
-    tuple val(sample_ID), path(input_references)
+    tuple val(sample_ref), path(variant_file)
+    tuple val(sample_ref), path(mask_file)
+    tuple val(sample_ref), path(input_references)
+    tuple val(sample_ref), val(sample_ID)
 
     output:
-    path "${sample_ID}*.fasta"
-    path "${sample_ID}*_combined.fasta", emit: combined_consensus
+    tuple val(sample_ID), path("${sample_ID}*fasta"), emit: consensus_fasta
 
     script:
     // May need to add some variant parsing here or in a separate step.
@@ -183,6 +262,23 @@ process makeConsensus {
     bcftools index -t ${variant_file}
     bcftools consensus -f ${input_references} -m ${mask_file} -o temp.fasta ${variant_file}
     fasta_xtractor.py -f temp.fasta -b ${mask_file} -s ${sample_ID}
-    if compgen -G ${sample_ID}*.fasta; then cat ${sample_ID}*.fasta > ${sample_ID}_combined.fasta; fi
+    """
+}
+
+process consensusCat {
+    // Make a combined consensus file from individual consensus files for each sample ID.
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/${sample_ID}/consensus_generation_6", mode: "copy"
+
+    input:
+    tuple val(sample_ID), path(consensus_seqs)
+
+    output:
+    path("${sample_ID}_combined.fasta")
+
+    script:
+    """
+    cat ${consensus_seqs} > ${sample_ID}_combined.fasta
     """
 }

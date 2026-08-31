@@ -61,7 +61,13 @@ def extract_sequences(fasta_file, bed_file, sample_ID, output_file):
     for seq_id in unique_ids:
         counter += 1
         if sample_ID:
-            fasta_ID = f'{sample_ID}_{seq_id}'
+            try:
+                seq_id.split(sample_ID)[1]
+                fasta_ID = f'{seq_id}'
+                if "_ref_" in fasta_ID:
+                    fasta_ID = f'{seq_id.split("_ref_")[0]}_{seq_id.split("_ref_")[1]}'
+            except:
+                fasta_ID = f'{sample_ID}_{seq_id}'
         else:
             fasta_ID = f'{seq_id}'
 

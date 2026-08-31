@@ -39,3 +39,47 @@ process analysisMetadata {
     echo "Timestamp,${TIME}" >> Analysis_metadata.csv
     """
 }
+
+process sampleMetadata {
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/${sample_ID}/", mode: "copy"
+
+    //debug true
+
+    input:
+    tuple val(sample_ID), val(read_count_files)
+    path input_references
+    tuple val(sample_ID), val(consensus_seqs)
+    tuple val(sample_ID), val(coverage_data)
+
+    output:
+    path ("*_sample_metadata.csv"), emit: sample_metadata
+    stdout
+
+    script:
+    """
+    metadata_assembler.py --reference_file ${input_references} --consensus_files "${consensus_seqs}" --coverage_data "${coverage_data}" -r "${read_count_files}"
+    """
+}
+
+process metadataCombine {
+    container "${params.consensus_func}@${params.consensus_func_sha}"
+    conda "${HOME}/miniconda3/envs/WaSPPipe"
+    publishDir "output/", mode: "copy"
+
+    debug true
+
+    input:
+    path sample_metadata_files
+    val run_ID
+
+    output:
+    path ("*run_metadata.csv")
+
+    script:
+    """
+    metadata_combiner.py --metadata_files "${sample_metadata_files}" --run_id ${run_ID}
+    """
+
+}
