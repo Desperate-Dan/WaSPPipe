@@ -46,11 +46,12 @@ The script combines information from per-reference read counts, filtered and unf
 
 ### closest_species_in_reference_set
 - **Description:** This is the species annotation for the reference identified in the `reference` column.
-- **Source:** Derived from the reference FASTA header metadata. This is to highlight what the species of the sequence in the reference file is, and does not guarantee that this sepcies is present in your data. 
+- **Source:** Derived from the reference FASTA header metadata. 
+- **Note:** This is to highlight what the species of the sequence in the reference file is, and does not guarantee that this sepcies is present in your data. 
 
 ### ncbi_link_to_reference
 - **Description:** NCBI Nuccore URL for the reference accession.
-- **Note:** This is the link to the NCBI page for the reference sequence with reads mapped to it. 
+- **Note:** This is the link to the NCBI page for the reference sequence with reads mapped to it.
 
 ### consensus_generated
 - **Description:** Whether or not a consensus sequence was generated for that reference.

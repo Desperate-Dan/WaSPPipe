@@ -86,7 +86,7 @@ process readMapper {
             samtools view -b -f 4 ${sample_ID}.all.bam | samtools fastq -0 ${sample_ID}.unmapped.fastq.gz -
         """
     } else {
-        mapping_cmd = "minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -"
+        mapping_cmd = "minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -q ${mappingQ} -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -"
     }
     """
     ${mapping_cmd}
@@ -164,7 +164,7 @@ process repeatMapper {
     tuple val(sample_ID), path(new_reference)
     tuple val(sample_ID), path(trimmed_reads)
     val mappingQ
-    
+
     output:
     tuple val(sample_ref), path("*.sorted.bam"), emit: repeat_mapped_reads
     tuple val(sample_ref), path("*.bai"), emit: repeat_bam_index, optional: true
