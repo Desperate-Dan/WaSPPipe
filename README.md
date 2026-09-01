@@ -6,6 +6,18 @@ https://github.com/Desperate-Dan/WaSPPipe
 ## This pipeline is under active development and is liable to change at any point with no notice!
 Initially the pipeline will focus on reference based consensus generation using the viral family references used for the primer coverage analysis. This will certainly be broadened in scope in the future.
 
+## Table of Contents
+
+- **EPI2ME**
+  - [Installation](#epi2me)
+  - [Run WaSPPipe](#run-wasppipe)
+  - [Pipeline Outputs](#outputs)
+  - [Updates](#updating-wasppipe)
+  - [Errors](#errors)
+- [Default Parameters](#default-parameters)
+- [Command Line](#command-line-wasppipe)
+
+
 ## Installation
 This pipeline can be run either on the command line as a typical nextflow pipeline or an epi2me workflow. We recommned using the EPI2ME platform for analysis at the moment.
 
@@ -31,11 +43,11 @@ Select WaSPPipe from the "launch" menu, then click the blue "Launch" button from
   <img src="docs/Setup_page.png" alt="WaSPPipe pipeline import" width="700" />
 </p>
 
-The only input required to run this pipeline is the the `FASTQ` option, where you need to provide the path to the `fastq_pass` folder of the sequencing run you wish to analyse. To do this, click on "select a path" under `FASTQ`, then select "Folder" from the pop up menu, then navigate to the location of the `fastq_pass` folder from your run and click "select folder". The bar should now show something like `C:\path\to\sequencing\run\fastq_pass` if you are on a windows computer.
+The only inputs required to run this pipeline are the `FASTQ` and `Run ID` options. For `FASTQ` you need to provide the path to the `fastq_pass` folder of the sequencing run you wish to analyse. To do this, click on "select a path" under `FASTQ`, then select "Folder" from the pop up menu, then navigate to the location of the `fastq_pass` folder from your run and click "select folder". The bar should now show something like `C:\path\to\sequencing\run\fastq_pass` if you are on a windows computer. For the `Run ID` option you need to enter in the Run ID that matches with the REDCap Run ID in your metadata to make downstream analysis more straightforward.
 
 You can now select "Launch Workflow" from the bottom right of the screen and your analysis will start!
 
-There are lots of setting that you can alter if you wish but currently the defaults are set to work with the standard WaSPP primer sets. In the future these are likely to change but will be discussed at consortium meetings and will be updated in future versions of the pipeline.
+There are lots of setting that you can alter if you wish but currently the defaults ([see below](#default-parameters)) are set to work with the standard WaSPP primer sets. In the future these are likely to change but will be discussed at consortium meetings and will be updated in future versions of the pipeline.
 
 #### The first time the WaSSPipe workflow runs, it will download the necessary software for the pipeline to run. This will require ~2Gb of storage space and can be slow depending on your internet connection. This will only happen the first time the pipeline is run (per update), so future runs of the piepeline will be quicker.
 
@@ -73,7 +85,7 @@ Since release **v1.2.0** there has been an extended metadata file produced by th
   <img src="docs/Metadata_example_output.png" alt="epi2me setup" width="800" />
 </p>
 
-In v1.2.0 a coverage plot is also output for each 
+In v1.2.0 a coverage plot is also output for each barcode where there is sufficient coverage to generate a consensus sequence. This coverage plot can be found in the `mask_generate_4` folder of your barcode of interest. The plot is an interactive html file so should open in your internet browser of choice. An example plot can be found [here](https://desperate-dan.github.io/WaSPPipe/example_coverage_plot.html).
 
 ### Errors
 As this pipeline is in an early stage of development we expect there to be a range of new an exciting errors produced when running it. If your pipeline says "Stopped with error", the first thing to do is look at the "Logs" tab in your EPI2ME run, and read the "Nextflow Logs" section. It is possible that the pipeline can't see your fastq_pass folder for instance. 
@@ -109,6 +121,23 @@ EPI2ME will now run your chosen version of the pipeline. To ensure you are on th
 
 #### Note that if you are running an early version of WaSPPipe it is possible that when you select "Switch revision" you will get a message saying no revisions are available. In this case you need to delete the WaSPPipe workflow from the pipeline launch page by selecting "Options" then "Delete workflow" (this can be seen just below the red box in screenshot two of this section), and then adding the workflow again as per the instructions in [this section of the installation guide.](https://github.com/Desperate-Dan/WaSPPipe/blob/main/README.md#add-wasppipe-workflow-to-epi2me)
 
+## Default Parameters
+| Parameter          | Variable name | Default Value | When Used                   |
+|--------------------|---------------|---------------|-----------------------------|
+| Min read length    | min_len       | **100**       | *Read filtering*            |
+| Max read length    | max_len       | **1500**      | *Read filtering*            |
+| Read Quality       | readQ         | **12**        | *Read filtering*            |
+| read trim length   | trim_len      | **30**        | *Primer trimming*           |
+| Mapping Quality    | mappingQ      | **15**        | *Read mapping*              |
+| Read count         | read_count    | **50**        | *Read mapping*              |
+| Read depth         | depth         | **20**        | *Consensus mask generation* |
+| Base Quality       | baseQ         | **20**        | *Consensus mask generation* |
+| Clair3 model       | clair3_model  | **r1041_e82_400bps_hac_v500*** | *Variant calling* |
+| Kraken2 database   | database      | **Viral****   | *Kraken2 analysis*          |
+
+\* _Change this to the appropriate model for your sequencing data. A list of models can be found [here](https://github.com/Desperate-Dan/WaSPPipe/blob/main/nextflow_schema.json) in the clair3_model section._
+
+\** _As of v1.2.0 this can be either "Viral" or "Standard-8Gb"._
 
 ## Command line WaSPPipe
 To run this pipeline on a BASH command line you need to have [nextflow](https://docs.seqera.io/nextflow/install) and [docker](https://docs.docker.com/engine/install/) installed on your computer. Verify the installation of these two tools by running:
@@ -127,7 +156,7 @@ WaSPPipe is now ready for use. To run the pipeline the only required input is th
 ```
 nextflow run /path/to/WaSPPipe-1.0.1/main.nf --fastq /path/to/fastq_pass/
 ```
-You can alter any of the parameters for the pipeline on the command line by using the appropriate flag. For a description of all relevant parameters for the pipline check out the [PARAMETERS.md](PARAMETERS.md) file. For example if you wanted to alter the ```max_length``` parameter you would add the ```--max_length``` flag to the command line argument with the value you would like to change it to:
+You can alter any of the parameters for the pipeline on the command line by using the appropriate flag. For a description of all relevant parameters for the pipline check out the [PARAMETERS.md](PARAMETERS.md) file. All the parameters in the [Default Parameters](#default-parameters) section above will be automatically included, but can be overwritten by providing the relevant flag. For example if you wanted to alter the `Max read length` parameter you would add the `--max_len` flag to the command line argument with the value you would like to change it to, 2000bp in this example:
 ```
 nextflow run /path/to/WaSPPipe-1.0.1/main.nf --fastq /path/to/fastq_pass/ --max_length 2000
 ```
