@@ -73,7 +73,7 @@ Since release **v1.2.0** there has been an extended metadata file produced by th
   <img src="docs/Metadata_example_output.png" alt="epi2me setup" width="800" />
 </p>
 
-In v1.2.0 a coverage plot is also output for each 
+In v1.2.0 a coverage plot is also output for each barcode where there is sufficient coverage to generate a consensus sequence. This coverage plot can be found in the `mask_generate_4` folder of your barcode of interest. The plot is an interactive html file so should open in your internet browser of choice. An example plot can be found [here](https://desperate-dan.github.io/WaSPPipe/example_coverage_plot.html).
 
 ### Errors
 As this pipeline is in an early stage of development we expect there to be a range of new an exciting errors produced when running it. If your pipeline says "Stopped with error", the first thing to do is look at the "Logs" tab in your EPI2ME run, and read the "Nextflow Logs" section. It is possible that the pipeline can't see your fastq_pass folder for instance. 
