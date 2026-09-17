@@ -34,10 +34,10 @@
         },
         "remap_all": {
           "type": "boolean",
-          "title": "Remap all reads in a sample against each reference with at least one read mapped to it",
-          "default": false,
+          "title": "Remap all",
+          "default": true,
           "description": "Selecting this will remap your reads against every reference with at least one read mapped to it in an initial mapping step using only that reference. This in theory will allow any reads that may map to a similar but divergent references to map to this particular reference. A consensus sequence is then generated for each reference where at least 'Read Count' reads have mapped.",
-          "help_text": "Warning - this can option can make the pipeline significantly slower if there are many more sequences to call vairants on. Note - that this cannont be used with 'top hit' mode above, and if both are selected only 'top hit' mode will run."
+          "help_text": "Deselecting this will in theory make your pipeline run faster but you may miss some low abundance and divergent read populations. Note - this cannont be used with 'top hit' mode above, and if both are selected only 'top hit' mode will run."
         },
         "top_hit_only": {
           "type": "boolean",

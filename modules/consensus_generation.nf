@@ -81,12 +81,12 @@ process readMapper {
     mapping_cmd = ""
     if (params.unmapped_out) {
         mapping_cmd = """
-            minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -q ${mappingQ} -b -o ${sample_ID}.all.bam - 
+            minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -o ${sample_ID}.all.bam - 
             samtools view -b -F 4 ${sample_ID}.all.bam | samtools sort -o ${sample_ID}.sorted.bam - 
             samtools view -b -f 4 ${sample_ID}.all.bam | samtools fastq -0 ${sample_ID}.unmapped.fastq.gz -
         """
     } else {
-        mapping_cmd = "minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -q ${mappingQ} -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -"
+        mapping_cmd = "minimap2 -a --secondary=no -x map-ont ${input_references} ${trimmed_reads} | samtools view -b -F 4 - | samtools sort -o ${sample_ID}.sorted.bam -"
     }
     """
     ${mapping_cmd}
