@@ -86,8 +86,12 @@ def sequence_comparison(reference_seqs,consensus_seqs):
                 continue
             else:
                 covered_base_counter += 1
-                if reference_seqs[consensus_accession][position] == base:
-                    matching_positions += 1
+                try:
+                    if reference_seqs[consensus_accession][position] == base:
+                        matching_positions += 1
+                except IndexError as e:
+                    print(f"Warning: consensus sequence is longer than your reference seqeunces - {consensus_accession} at {position}")
+                    break
         covered_prop = (covered_base_counter/len(consensus_seq))
         #print(f"{consensus_accession} has {covered_base_counter} non-N bases and {matching_positions} similarities.")
         comp_tuple = (covered_base_counter, matching_positions, covered_base_counter, covered_prop)
